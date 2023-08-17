@@ -59,7 +59,7 @@ jobs:
       id: create_release
       uses: actions/create-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.CICD_GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
         release_name: Release ${{ github.ref }}
@@ -74,7 +74,7 @@ jobs:
     - name: Upload Release Assets
       uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.CICD_GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./artifacts/ring-cli-linux-x86_64
@@ -83,7 +83,7 @@ jobs:
 
     - uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.CICD_GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./artifacts/ring-cli-windows-x86_64.exe
@@ -92,7 +92,7 @@ jobs:
 
     - uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.CICD_GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./artifacts/ring-cli-macos-x86_64
@@ -101,7 +101,7 @@ jobs:
 
     - uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.CICD_GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./artifacts/ring-cli-macos-aarch64
