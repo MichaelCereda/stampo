@@ -141,6 +141,11 @@ jobs:
         run: |
           git config --global user.email "jdoe@example.com"
           git config --global user.name "J. Doe"
+      - name: Fix openssl/pkg-config issues on Linux
+        run: |
+          sudo apt-get update --yes && sudo apt-get install --yes libssl-dev pkg-config
+          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig" >> $GITHUB_ENV
+        if: contains(matrix.platform.name, 'musl')
       - name: Install musl-tools on Linux
         run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
         if: contains(matrix.platform.name, 'musl')
