@@ -10,6 +10,23 @@ clap = "2.33"
 serde = "1.0"
 serde_yaml = "0.8"
 serde_derive = "1.0"
-reqwest = "0.11"
+reqwest = "0.11.18"
 tokio = { version = "1", features = ["full"] }
 dirs = "3.0"
+
+[target.'cfg(darwin)'.dependencies]
+reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+
+[target.'cfg(all(target_os = "windows", target_arch="x86_64"))'.dependencies]
+reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+
+[target.'cfg(all(target_os = "windows", not(target_arch="x86_64")))'.dependencies]
+reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "default-tls"] }
+openssl = { version = "0.10.56", features = ["vendored"] }
+
+[target.'cfg(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel")))'.dependencies]
+reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+
+[target.'cfg(all(not(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel"))), not(target_os = "windows"), not(target_os = "darwin")))'.dependencies]
+reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "default-tls"] }
+openssl = { version = "0.10.56", features = ["vendored"] }

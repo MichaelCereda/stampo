@@ -2,7 +2,7 @@ name: Tests and release
 on: [push, pull_request]
 env:
   CRATE_NAME: ring-cli
-  GITHUB_TOKEN: ${{ github.CICD_GITHUB_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.CICD_GITHUB_TOKEN }}
   RUST_BACKTRACE: 1
 jobs:
   test:
@@ -141,9 +141,6 @@ jobs:
         run: |
           git config --global user.email "jdoe@example.com"
           git config --global user.name "J. Doe"
-      - name: Install cross compilation support + utilities on Linux
-        run: sudo apt-get update --yes && sudo apt-get install --yes libssl-dev  pkg-config
-        if: contains(matrix.platform.name, 'Linux')
       - name: Install musl-tools on Linux
         run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
         if: contains(matrix.platform.name, 'musl')
