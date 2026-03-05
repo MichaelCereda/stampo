@@ -432,7 +432,7 @@ fn main() -> anyhow::Result<()> {
             if let Some(config_matches) = matches.subcommand_matches(&config.name) {
                 for (cmd_name, cmd) in &config.commands {
                     if let Some(cmd_matches) = config_matches.subcommand_matches(cmd_name) {
-                        if let Err(e) = cli::execute_command(cmd, cmd_matches, is_verbose, None) {
+                        if let Err(e) = cli::execute_command(cmd, cmd_matches, is_verbose, config.base_dir.as_deref()) {
                             if !is_quiet {
                                 eprintln!("{}", style::error(&e.to_string()));
                             }
@@ -493,7 +493,7 @@ fn main() -> anyhow::Result<()> {
             if let Some(config_matches) = matches.subcommand_matches(&config.name) {
                 for (cmd_name, cmd) in &config.commands {
                     if let Some(cmd_matches) = config_matches.subcommand_matches(cmd_name) {
-                        if let Err(e) = cli::execute_command(cmd, cmd_matches, is_verbose, None) {
+                        if let Err(e) = cli::execute_command(cmd, cmd_matches, is_verbose, config.base_dir.as_deref()) {
                             if !is_quiet {
                                 eprintln!("{}", style::error(&e.to_string()));
                             }

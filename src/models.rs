@@ -8,6 +8,8 @@ pub struct Configuration {
     pub version: String,
     pub name: String,
     pub description: String,
+    #[serde(default, rename = "base-dir")]
+    pub base_dir: Option<String>,
     pub commands: HashMap<String, Command>,
 }
 
