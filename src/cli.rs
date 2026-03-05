@@ -229,3 +229,112 @@ pub fn execute_command(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{CmdType, Command as RingCommand, Configuration, Flag};
+
+    fn make_test_config() -> Configuration {
+        let mut commands = HashMap::new();
+        commands.insert(
+            "greet".to_string(),
+            RingCommand {
+                description: "Greet a user".to_string(),
+                flags: vec![Flag {
+                    name: "name".to_string(),
+                    short: Some("n".to_string()),
+                    description: "Name of the user".to_string(),
+                }],
+                cmd: Some(CmdType::Run { run: vec!["echo Hello, ${{name}}!".to_string()] }),
+                subcommands: None,
+            },
+        );
+        Configuration {
+            version: "1.0".to_string(),
+            description: "Test CLI".to_string(),
+            slug: "test".to_string(),
+            commands,
+        }
+    }
+
+    #[test]
+    fn test_build_cli_has_config_subcommand() {
+        let config = make_test_config();
+        let app = build_cli_from_configs(&[config]);
+        let matches = app
+            .try_get_matches_from(["ring-cli", "test", "greet", "--name", "Alice"])
+            .expect("should parse");
+        let test_matches = matches.subcommand_matches("test").expect("test subcommand");
+        let greet_matches = test_matches.subcommand_matches("greet").expect("greet subcommand");
+        let name = greet_matches.get_one::<String>("name").expect("name flag");
+        assert_eq!(name, "Alice");
+    }
+
+    #[test]
+    fn test_build_cli_quiet_and_verbose_flags() {
+        let app = build_cli_from_configs(&[]);
+        let matches = app
+            .try_get_matches_from(["ring-cli", "-q", "-v"])
+            .expect("should parse");
+        assert!(matches.get_flag("quiet"));
+        assert!(matches.get_flag("verbose"));
+    }
+
+    #[test]
+    fn test_build_cli_nested_subcommands() {
+        let mut migrate_subs = HashMap::new();
+        migrate_subs.insert(
+            "migrate".to_string(),
+            RingCommand {
+                description: "Run migrations".to_string(),
+                flags: vec![],
+                cmd: Some(CmdType::Run { run: vec!["echo migrating".to_string()] }),
+                subcommands: None,
+            },
+        );
+        let mut commands = HashMap::new();
+        commands.insert(
+            "db".to_string(),
+            RingCommand {
+                description: "Database operations".to_string(),
+                flags: vec![],
+                cmd: None,
+                subcommands: Some(migrate_subs),
+            },
+        );
+        let config = Configuration {
+            version: "1.0".to_string(),
+            description: "Nested CLI".to_string(),
+            slug: "nested".to_string(),
+            commands,
+        };
+        let app = build_cli_from_configs(&[config]);
+        let matches = app
+            .try_get_matches_from(["ring-cli", "nested", "db", "migrate"])
+            .expect("should parse nested subcommands");
+        let nested_matches = matches.subcommand_matches("nested").expect("nested subcommand");
+        let db_matches = nested_matches.subcommand_matches("db").expect("db subcommand");
+        assert!(db_matches.subcommand_matches("migrate").is_some());
+    }
+
+    #[test]
+    fn test_extract_flag_values() {
+        let flags = vec![Flag {
+            name: "name".to_string(),
+            short: Some("n".to_string()),
+            description: "Name".to_string(),
+        }];
+        // Build a minimal CLI and parse to get ArgMatches
+        let app = clap::Command::new("test-app").arg(
+            clap::Arg::new("name")
+                .long("name")
+                .short('n'),
+        );
+        let matches = app
+            .try_get_matches_from(["test-app", "--name", "Bob"])
+            .expect("should parse");
+        let flag_values = extract_flag_values(&flags, &matches);
+        assert_eq!(flag_values.get("name").map(String::as_str), Some("Bob"));
+    }
+}
