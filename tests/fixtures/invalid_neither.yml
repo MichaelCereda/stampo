@@ -1,6 +1,5 @@
-version: "1.0"
+version: "2.0"
 description: "Invalid config"
-slug: "invalid"
 commands:
   bad:
     description: "Has neither cmd nor subcommands"

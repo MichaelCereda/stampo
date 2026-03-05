@@ -7,7 +7,6 @@ use crate::errors::RingError;
 pub struct Configuration {
     pub version: String,
     pub description: String,
-    pub slug: String,
     pub commands: HashMap<String, Command>,
 }
 
@@ -79,9 +78,8 @@ mod tests {
     #[test]
     fn test_deserialize_run_command() {
         let yaml = r#"
-version: "1.0"
+version: "2.0"
 description: "Test CLI"
-slug: "mycli"
 commands:
   greet:
     description: "Greet someone"
@@ -94,7 +92,6 @@ commands:
         - "echo Hello, ${{name}}!"
 "#;
         let config: Configuration = serde_saphyr::from_str(yaml).expect("valid YAML");
-        assert_eq!(config.slug, "mycli");
         let greet = config.commands.get("greet").expect("greet command exists");
         assert_eq!(greet.flags.len(), 1);
         assert_eq!(greet.flags[0].name, "name");
@@ -104,9 +101,8 @@ commands:
     #[test]
     fn test_deserialize_http_command() {
         let yaml = r#"
-version: "1.0"
+version: "2.0"
 description: "HTTP CLI"
-slug: "httpcli"
 commands:
   fetch:
     description: "Fetch a URL"
@@ -220,9 +216,8 @@ commands:
     #[test]
     fn test_deserialize_flags_without_short() {
         let yaml = r#"
-version: "1.0"
+version: "2.0"
 description: "No short flag"
-slug: "noshort"
 commands:
   run:
     description: "Run something"
@@ -236,5 +231,38 @@ commands:
         let config: Configuration = serde_saphyr::from_str(yaml).expect("valid YAML");
         let run_cmd = config.commands.get("run").expect("run command exists");
         assert_eq!(run_cmd.flags[0].short, None);
+    }
+
+    #[test]
+    fn test_deserialize_v2_config_no_slug() {
+        let yaml = r#"
+version: "2.0"
+description: "My CLI"
+commands:
+  greet:
+    description: "Greet someone"
+    flags:
+      - name: "name"
+        short: "n"
+        description: "Name to greet"
+    cmd:
+      run:
+        - "echo Hello, ${{name}}!"
+"#;
+        let config: Configuration = serde_saphyr::from_str(yaml).expect("valid v2 YAML");
+        assert_eq!(config.version, "2.0");
+        assert_eq!(config.description, "My CLI");
+        assert!(config.commands.contains_key("greet"));
+    }
+
+    #[test]
+    fn test_empty_commands_map() {
+        let yaml = r#"
+version: "2.0"
+description: "Empty"
+commands: {}
+"#;
+        let config: Configuration = serde_saphyr::from_str(yaml).expect("valid YAML");
+        assert!(config.commands.is_empty());
     }
 }

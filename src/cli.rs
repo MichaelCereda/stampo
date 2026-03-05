@@ -82,9 +82,6 @@ pub fn build_cli_from_configs(configs: &[Configuration]) -> clap::Command {
                 .help("Base directory for relative paths"),
         );
     for config in configs {
-        let mut subcommand = clap::Command::new(config.slug.to_owned())
-            .about(config.description.to_owned())
-            .version(config.version.to_owned());
         for (cmd_name, cmd) in &config.commands {
             let mut cmd_subcommand =
                 clap::Command::new(cmd_name.to_owned()).about(cmd.description.to_owned());
@@ -92,9 +89,8 @@ pub fn build_cli_from_configs(configs: &[Configuration]) -> clap::Command {
                 cmd_subcommand = cmd_subcommand.arg(build_arg(flag));
             }
             cmd_subcommand = add_subcommands_to_cli(cmd, cmd_subcommand);
-            subcommand = subcommand.subcommand(cmd_subcommand);
+            app = app.subcommand(cmd_subcommand);
         }
-        app = app.subcommand(subcommand);
     }
     app
 }
@@ -253,7 +249,6 @@ mod tests {
         Configuration {
             version: "1.0".to_string(),
             description: "Test CLI".to_string(),
-            slug: "test".to_string(),
             commands,
         }
     }
@@ -263,10 +258,9 @@ mod tests {
         let config = make_test_config();
         let app = build_cli_from_configs(&[config]);
         let matches = app
-            .try_get_matches_from(["ring-cli", "test", "greet", "--name", "Alice"])
+            .try_get_matches_from(["ring-cli", "greet", "--name", "Alice"])
             .expect("should parse");
-        let test_matches = matches.subcommand_matches("test").expect("test subcommand");
-        let greet_matches = test_matches.subcommand_matches("greet").expect("greet subcommand");
+        let greet_matches = matches.subcommand_matches("greet").expect("greet subcommand");
         let name = greet_matches.get_one::<String>("name").expect("name flag");
         assert_eq!(name, "Alice");
     }
@@ -306,15 +300,13 @@ mod tests {
         let config = Configuration {
             version: "1.0".to_string(),
             description: "Nested CLI".to_string(),
-            slug: "nested".to_string(),
             commands,
         };
         let app = build_cli_from_configs(&[config]);
         let matches = app
-            .try_get_matches_from(["ring-cli", "nested", "db", "migrate"])
+            .try_get_matches_from(["ring-cli", "db", "migrate"])
             .expect("should parse nested subcommands");
-        let nested_matches = matches.subcommand_matches("nested").expect("nested subcommand");
-        let db_matches = nested_matches.subcommand_matches("db").expect("db subcommand");
+        let db_matches = matches.subcommand_matches("db").expect("db subcommand");
         assert!(db_matches.subcommand_matches("migrate").is_some());
     }
 

@@ -161,9 +161,8 @@ fn handle_init(path: Option<&String>, alias: Option<&String>) -> Result<(), anyh
     let template = r#"# Ring-CLI Configuration
 # See https://github.com/user/ring-cli for documentation
 
-version: "1.0"
+version: "2.0"
 description: "My custom CLI"
-slug: "mycli"
 commands:
   greet:
     description: "Greet a user"
@@ -252,15 +251,13 @@ fn main() -> anyhow::Result<()> {
     let base_dir = matches.get_one::<String>("base_dir").map(|s| s.as_str());
 
     for config in &configurations {
-        if let Some(submatches) = matches.subcommand_matches(&config.slug) {
-            for (cmd_name, cmd) in &config.commands {
-                if let Some(cmd_matches) = submatches.subcommand_matches(cmd_name) {
-                    if let Err(e) = cli::execute_command(cmd, cmd_matches, is_verbose, base_dir) {
-                        if !is_quiet {
-                            eprintln!("Error: {}", e);
-                        }
-                        std::process::exit(1);
+        for (cmd_name, cmd) in &config.commands {
+            if let Some(cmd_matches) = matches.subcommand_matches(cmd_name) {
+                if let Err(e) = cli::execute_command(cmd, cmd_matches, is_verbose, base_dir) {
+                    if !is_quiet {
+                        eprintln!("Error: {}", e);
                     }
+                    std::process::exit(1);
                 }
             }
         }

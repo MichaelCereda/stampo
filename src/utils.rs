@@ -115,7 +115,7 @@ pub fn load_configurations(
 
     for config in &configurations {
         for (cmd_name, cmd) in &config.commands {
-            cmd.validate(&format!("{} > {}", config.slug, cmd_name))?;
+            cmd.validate(cmd_name)?;
         }
     }
 
@@ -171,9 +171,8 @@ mod tests {
         let dir = tempfile::TempDir::new().unwrap();
         let file_path = dir.path().join("test.yml");
         let yaml = r#"
-version: "1.0"
+version: "2.0"
 description: "Temp CLI"
-slug: "tempcli"
 commands:
   run:
     description: "Run something"
@@ -186,26 +185,25 @@ commands:
         let configs = load_configurations(Some(file_path.to_str().unwrap()))
             .expect("should load");
         assert_eq!(configs.len(), 1);
-        assert_eq!(configs[0].slug, "tempcli");
+        assert_eq!(configs[0].description, "Temp CLI");
     }
 
     #[test]
     fn test_load_config_directory() {
         let dir = tempfile::TempDir::new().unwrap();
-        let yaml = |slug: &str| format!(r#"
-version: "1.0"
-description: "CLI {slug}"
-slug: "{slug}"
+        let yaml = |name: &str| format!(r#"
+version: "2.0"
+description: "CLI {name}"
 commands:
   run:
     description: "run"
     flags: []
     cmd:
       run:
-        - "echo {slug}"
+        - "echo {name}"
 "#);
-        std::fs::write(dir.path().join("a.yml"), yaml("aslug")).unwrap();
-        std::fs::write(dir.path().join("b.yml"), yaml("bslug")).unwrap();
+        std::fs::write(dir.path().join("a.yml"), yaml("aname")).unwrap();
+        std::fs::write(dir.path().join("b.yml"), yaml("bname")).unwrap();
         std::fs::write(dir.path().join("c.txt"), "not yaml").unwrap();
 
         let configs = load_configurations(Some(dir.path().to_str().unwrap()))
@@ -234,9 +232,8 @@ commands:
         let dir = tempfile::TempDir::new().unwrap();
         let file_path = dir.path().join("invalid.yml");
         let yaml = r#"
-version: "1.0"
+version: "2.0"
 description: "Invalid"
-slug: "invalid"
 commands:
   bad:
     description: "neither cmd nor subcommands"

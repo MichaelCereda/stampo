@@ -41,7 +41,6 @@ fn test_load_fixture_config_and_run_command() {
     let output = cargo_bin()
         .args([
             "--config=tests/fixtures/valid_config.yml",
-            "test",
             "greet",
             "--name",
             "World",
@@ -59,7 +58,7 @@ fn test_load_fixture_config_and_run_command() {
 #[test]
 fn test_multi_step_command() {
     let output = cargo_bin()
-        .args(["--config=tests/fixtures/valid_config.yml", "test", "multi"])
+        .args(["--config=tests/fixtures/valid_config.yml", "multi"])
         .output()
         .expect("failed to run cargo run");
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -77,7 +76,7 @@ fn test_multi_step_command() {
 #[test]
 fn test_invalid_config_both_cmd_and_subcommands() {
     let output = cargo_bin()
-        .args(["--config=tests/fixtures/invalid_both.yml", "invalid", "bad"])
+        .args(["--config=tests/fixtures/invalid_both.yml", "bad"])
         .output()
         .expect("failed to run cargo run");
     assert!(
@@ -94,7 +93,7 @@ fn test_invalid_config_both_cmd_and_subcommands() {
 #[test]
 fn test_invalid_config_neither_cmd_nor_subcommands() {
     let output = cargo_bin()
-        .args(["--config=tests/fixtures/invalid_neither.yml", "invalid", "bad"])
+        .args(["--config=tests/fixtures/invalid_neither.yml", "bad"])
         .output()
         .expect("failed to run cargo run");
     assert!(
@@ -135,7 +134,7 @@ fn test_init_creates_file() {
     );
     assert!(target.exists(), "expected file to be created at {}", target.display());
     let content = std::fs::read_to_string(&target).unwrap();
-    assert!(content.contains("slug:"), "missing 'slug:' in created file:\n{content}");
+    assert!(content.contains("version:"), "missing 'version:' in created file:\n{content}");
     assert!(content.contains("commands:"), "missing 'commands:' in created file:\n{content}");
 }
 
@@ -158,9 +157,8 @@ fn test_init_refuses_overwrite() {
 fn test_env_var_replacement() {
     let dir = tempfile::TempDir::new().expect("tempdir");
     let config_path = dir.path().join("env_test.yml");
-    let yaml = r#"version: "1.0"
+    let yaml = r#"version: "2.0"
 description: "Env test CLI"
-slug: "envtest"
 commands:
   greet:
     description: "Greet with env var"
@@ -175,7 +173,6 @@ commands:
         .env("RING_TEST_GREETING", "Howdy")
         .args([
             &format!("--config={}", config_path.to_str().unwrap()),
-            "envtest",
             "greet",
         ])
         .output()
