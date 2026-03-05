@@ -125,7 +125,7 @@ fn test_init_creates_file() {
     let dir = tempfile::TempDir::new().expect("tempdir");
     let target = dir.path().join("my_config.yml");
     let output = cargo_bin()
-        .args(["init", "--path", target.to_str().unwrap()])
+        .args(["init", "--config-path", target.to_str().unwrap()])
         .output()
         .expect("failed to run cargo run");
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -145,7 +145,7 @@ fn test_init_refuses_overwrite() {
     let target = dir.path().join("existing.yml");
     std::fs::write(&target, "already here").unwrap();
     let output = cargo_bin()
-        .args(["init", "--path", target.to_str().unwrap()])
+        .args(["init", "--config-path", target.to_str().unwrap()])
         .output()
         .expect("failed to run cargo run");
     assert!(

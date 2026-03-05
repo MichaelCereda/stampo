@@ -93,7 +93,7 @@ commands:
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() >= 2 && args[1] == "init" {
-        let path = args.iter().position(|a| a == "--path").and_then(|i| args.get(i + 1));
+        let path = args.iter().position(|a| a == "--config-path").and_then(|i| args.get(i + 1));
         return handle_init(path);
     }
 
