@@ -1,5 +1,7 @@
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use crate::errors::RingError;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Configuration {
@@ -12,26 +14,33 @@ pub struct Configuration {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Command {
     pub description: String,
+    #[serde(default)]
     pub flags: Vec<Flag>,
     pub cmd: Option<CmdType>,
     pub subcommands: Option<HashMap<String, Command>>,
 }
 
 impl Command {
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self, context: &str) -> Result<(), RingError> {
         match (&self.cmd, &self.subcommands) {
             (Some(_), Some(_)) => {
-                return Err("Only 'cmd' or 'subcommands' should be present, not both.".to_string())
+                return Err(RingError::Validation {
+                    context: context.to_string(),
+                    message: "Only 'cmd' or 'subcommands' should be present, not both.".to_string(),
+                })
             }
             (None, None) => {
-                return Err("Either 'cmd' or 'subcommands' must be present.".to_string())
+                return Err(RingError::Validation {
+                    context: context.to_string(),
+                    message: "Either 'cmd' or 'subcommands' must be present.".to_string(),
+                })
             }
             _ => (),
         }
 
         if let Some(subcommands) = &self.subcommands {
-            for (_, sub_cmd) in subcommands {
-                sub_cmd.validate()?; // Recursive call
+            for (sub_name, sub_cmd) in subcommands {
+                sub_cmd.validate(&format!("{} > {}", context, sub_name))?;
             }
         }
 
