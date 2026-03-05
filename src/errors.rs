@@ -8,7 +8,7 @@ pub enum RingError {
     #[error("Error parsing '{path}': {source}")]
     YamlParse {
         path: String,
-        source: serde_yml::Error,
+        source: Box<serde_saphyr::Error>,
     },
 
     #[error("IO error reading '{path}': {source}")]

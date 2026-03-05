@@ -93,7 +93,7 @@ commands:
       run:
         - "echo Hello, ${{name}}!"
 "#;
-        let config: Configuration = serde_yml::from_str(yaml).expect("valid YAML");
+        let config: Configuration = serde_saphyr::from_str(yaml).expect("valid YAML");
         assert_eq!(config.slug, "mycli");
         let greet = config.commands.get("greet").expect("greet command exists");
         assert_eq!(greet.flags.len(), 1);
@@ -119,7 +119,7 @@ commands:
           Authorization: "Bearer token"
         body: '{"key":"value"}'
 "#;
-        let config: Configuration = serde_yml::from_str(yaml).expect("valid YAML");
+        let config: Configuration = serde_saphyr::from_str(yaml).expect("valid YAML");
         let fetch = config.commands.get("fetch").expect("fetch command exists");
         if let Some(CmdType::Http { http }) = &fetch.cmd {
             assert_eq!(http.method, "POST");
@@ -233,7 +233,7 @@ commands:
       run:
         - "echo ${{target}}"
 "#;
-        let config: Configuration = serde_yml::from_str(yaml).expect("valid YAML");
+        let config: Configuration = serde_saphyr::from_str(yaml).expect("valid YAML");
         let run_cmd = config.commands.get("run").expect("run command exists");
         assert_eq!(run_cmd.flags[0].short, None);
     }

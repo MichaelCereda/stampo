@@ -72,10 +72,10 @@ pub fn load_configurations(
             path: path_str.clone(),
             source: e,
         })?;
-        let config: Configuration = serde_yml::from_str(&content).map_err(|e| {
+        let config: Configuration = serde_saphyr::from_str(&content).map_err(|e| {
             RingError::YamlParse {
                 path: path_str,
-                source: e,
+                source: Box::new(e),
             }
         })?;
         configurations.push(config);
@@ -100,9 +100,9 @@ pub fn load_configurations(
                 source: e,
             })?;
             let config: Configuration =
-                serde_yml::from_str(&content).map_err(|e| RingError::YamlParse {
+                serde_saphyr::from_str(&content).map_err(|e| RingError::YamlParse {
                     path: path_str,
-                    source: e,
+                    source: Box::new(e),
                 })?;
             configurations.push(config);
         }
