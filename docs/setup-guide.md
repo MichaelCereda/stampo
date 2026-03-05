@@ -1,6 +1,6 @@
-# Ring-CLI Agent Setup Guide
+# Ring-CLI Setup Guide
 
-Instructions for an AI agent to install ring-cli on a host and configure it.
+How to install ring-cli and create configuration files.
 
 ---
 
@@ -226,9 +226,9 @@ infra deploy staging --branch main
 
 ---
 
-## Part 5: Agent Workflow — Step by Step
+## Part 5: Workflow — Step by Step
 
-Follow these steps in order when setting up ring-cli for a user:
+Follow these steps in order when setting up ring-cli:
 
 ### Step 1: Determine what commands the user needs
 
