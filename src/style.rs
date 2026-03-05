@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::io::IsTerminal;
 use std::sync::OnceLock;
 
@@ -54,6 +52,7 @@ pub fn success(msg: &str) -> String {
     }
 }
 
+#[allow(dead_code)]
 pub fn bold(msg: &str) -> String {
     if is_color_enabled() {
         format!("\x1b[1m{msg}\x1b[0m")
@@ -62,6 +61,7 @@ pub fn bold(msg: &str) -> String {
     }
 }
 
+#[allow(dead_code)]
 pub fn dim(msg: &str) -> String {
     if is_color_enabled() {
         format!("\x1b[2m{msg}\x1b[0m")

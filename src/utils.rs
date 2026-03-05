@@ -65,86 +65,6 @@ pub fn load_configuration(config_path: &str) -> Result<Configuration, RingError>
     Ok(config)
 }
 
-// Kept for backwards compatibility with tests; will be removed in a future cleanup.
-#[allow(dead_code)]
-pub fn load_configurations(
-    config_path: Option<&str>,
-) -> Result<Vec<Configuration>, RingError> {
-    let mut configurations = Vec::new();
-
-    let default_config_dir = dirs::home_dir()
-        .ok_or_else(|| RingError::Config("Unable to determine home directory".to_string()))?
-        .join(".ring-cli/configurations");
-
-    let using_default = config_path.is_none();
-    let config_dir = if let Some(path) = config_path {
-        std::path::PathBuf::from(path)
-    } else {
-        default_config_dir
-    };
-
-    // When the default directory simply doesn't exist yet, return empty configs
-    // rather than an error so that `--help` and `init` still work.
-    if using_default && !config_dir.exists() {
-        return Ok(configurations);
-    }
-
-    if config_dir.is_file() {
-        let path_str = config_dir.display().to_string();
-        let content = fs::read_to_string(&config_dir).map_err(|e| RingError::Io {
-            path: path_str.clone(),
-            source: e,
-        })?;
-        let config: Configuration = serde_saphyr::from_str(&content).map_err(|e| {
-            RingError::YamlParse {
-                path: path_str,
-                source: Box::new(e),
-            }
-        })?;
-        configurations.push(config);
-    } else if config_dir.is_dir() {
-        let paths = fs::read_dir(&config_dir).map_err(|e| RingError::Io {
-            path: config_dir.display().to_string(),
-            source: e,
-        })?;
-        for entry in paths {
-            let entry = entry.map_err(|e| RingError::Io {
-                path: config_dir.display().to_string(),
-                source: e,
-            })?;
-            let path = entry.path();
-            match path.extension().and_then(|e| e.to_str()) {
-                Some("yml") | Some("yaml") => {}
-                _ => continue,
-            }
-            let path_str = path.display().to_string();
-            let content = fs::read_to_string(&path).map_err(|e| RingError::Io {
-                path: path_str.clone(),
-                source: e,
-            })?;
-            let config: Configuration =
-                serde_saphyr::from_str(&content).map_err(|e| RingError::YamlParse {
-                    path: path_str,
-                    source: Box::new(e),
-                })?;
-            configurations.push(config);
-        }
-    } else {
-        return Err(RingError::Config(format!(
-            "Config path '{}' is neither a file nor a directory",
-            config_dir.display()
-        )));
-    }
-
-    for config in &configurations {
-        for (cmd_name, cmd) in &config.commands {
-            cmd.validate(cmd_name)?;
-        }
-    }
-
-    Ok(configurations)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -190,7 +110,7 @@ mod tests {
     }
 
     #[test]
-    fn test_load_single_config_file() {
+    fn test_load_configuration_single_file() {
         let dir = tempfile::TempDir::new().unwrap();
         let file_path = dir.path().join("test.yml");
         let yaml = r#"
@@ -205,53 +125,29 @@ commands:
         - "echo hi"
 "#;
         std::fs::write(&file_path, yaml).unwrap();
-        let configs = load_configurations(Some(file_path.to_str().unwrap()))
+        let config = load_configuration(file_path.to_str().unwrap())
             .expect("should load");
-        assert_eq!(configs.len(), 1);
-        assert_eq!(configs[0].description, "Temp CLI");
+        assert_eq!(config.description, "Temp CLI");
     }
 
     #[test]
-    fn test_load_config_directory() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let yaml = |name: &str| format!(r#"
-version: "2.0"
-description: "CLI {name}"
-commands:
-  run:
-    description: "run"
-    flags: []
-    cmd:
-      run:
-        - "echo {name}"
-"#);
-        std::fs::write(dir.path().join("a.yml"), yaml("aname")).unwrap();
-        std::fs::write(dir.path().join("b.yml"), yaml("bname")).unwrap();
-        std::fs::write(dir.path().join("c.txt"), "not yaml").unwrap();
-
-        let configs = load_configurations(Some(dir.path().to_str().unwrap()))
-            .expect("should load");
-        assert_eq!(configs.len(), 2);
-    }
-
-    #[test]
-    fn test_load_nonexistent_path_errors() {
-        let result = load_configurations(Some("/nonexistent/path/config.yml"));
+    fn test_load_configuration_nonexistent_errors() {
+        let result = load_configuration("/nonexistent/path/config.yml");
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_load_invalid_yaml_shows_path() {
+    fn test_load_configuration_invalid_yaml_shows_path() {
         let dir = tempfile::TempDir::new().unwrap();
         let file_path = dir.path().join("bad.yml");
         std::fs::write(&file_path, "not: valid: yaml: [unclosed").unwrap();
-        let err = load_configurations(Some(file_path.to_str().unwrap()))
+        let err = load_configuration(file_path.to_str().unwrap())
             .expect_err("should fail");
         assert!(err.to_string().contains("bad.yml"), "error was: {err}");
     }
 
     #[test]
-    fn test_load_validates_configs() {
+    fn test_load_configuration_validates() {
         let dir = tempfile::TempDir::new().unwrap();
         let file_path = dir.path().join("invalid.yml");
         let yaml = r#"
@@ -263,7 +159,7 @@ commands:
     flags: []
 "#;
         std::fs::write(&file_path, yaml).unwrap();
-        let err = load_configurations(Some(file_path.to_str().unwrap()))
+        let err = load_configuration(file_path.to_str().unwrap())
             .expect_err("should fail validation");
         assert!(err.to_string().contains("must be present"), "error was: {err}");
     }
