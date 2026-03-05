@@ -94,16 +94,18 @@ mod tests {
 
     #[test]
     fn test_replace_env_var() {
-        std::env::set_var("RING_TEST_VAR", "test_value");
+        // SAFETY: test runs in isolation; no other thread reads this env var.
+        unsafe { std::env::set_var("RING_TEST_VAR", "test_value") };
         let result = replace_env_vars("Value: ${{env.RING_TEST_VAR}}", false)
             .expect("should succeed");
         assert_eq!(result, "Value: test_value");
-        std::env::remove_var("RING_TEST_VAR");
+        unsafe { std::env::remove_var("RING_TEST_VAR") };
     }
 
     #[test]
     fn test_replace_env_var_not_set() {
-        std::env::remove_var("RING_TEST_MISSING_VAR");
+        // SAFETY: test runs in isolation; no other thread reads this env var.
+        unsafe { std::env::remove_var("RING_TEST_MISSING_VAR") };
         let err = replace_env_vars("Value: ${{env.RING_TEST_MISSING_VAR}}", false)
             .expect_err("should fail");
         assert!(err.to_string().contains("RING_TEST_MISSING_VAR"), "error was: {err}");
