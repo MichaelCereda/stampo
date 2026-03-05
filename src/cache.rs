@@ -93,8 +93,6 @@ pub fn save_trusted_config(
 ///
 /// Returns an error if the cache directory does not exist, any file is
 /// unreadable, or the metadata JSON is malformed.
-// Will be wired to `refresh-configuration` in a future task.
-#[allow(dead_code)]
 pub fn load_trusted_config(alias_name: &str) -> Result<(String, AliasMetadata), anyhow::Error> {
     let dir = alias_dir(alias_name);
     let config = fs::read_to_string(dir.join("config.yml"))?;

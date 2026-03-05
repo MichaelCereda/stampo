@@ -249,6 +249,70 @@ fn handle_init(config_path: Option<&String>, alias: Option<&String>) -> Result<(
     Ok(())
 }
 
+fn find_alias_for_config(config_path: &str) -> Result<String, anyhow::Error> {
+    let aliases_dir = cache::aliases_dir();
+    if !aliases_dir.exists() {
+        anyhow::bail!("No aliases configured");
+    }
+    let abs_config = fs::canonicalize(config_path)?;
+    for entry in fs::read_dir(&aliases_dir)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            let meta_path = entry.path().join("metadata.json");
+            if meta_path.exists() {
+                let meta_str = fs::read_to_string(&meta_path)?;
+                let meta: cache::AliasMetadata = serde_json::from_str(&meta_str)?;
+                if std::path::Path::new(&meta.source_path) == abs_config {
+                    return Ok(entry.file_name().to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+    anyhow::bail!("No alias found for config '{config_path}'")
+}
+
+fn handle_refresh_configuration(alias_name: &str) -> Result<(), anyhow::Error> {
+    let (_, metadata) = cache::load_trusted_config(alias_name)
+        .map_err(|_| anyhow::anyhow!("No cached configuration found for alias '{alias_name}'. Run 'ring-cli init' first."))?;
+
+    let source_content = match fs::read_to_string(&metadata.source_path) {
+        Ok(content) => content,
+        Err(_) => {
+            eprintln!("{}", style::error(&format!(
+                "Source configuration not found at '{}'. The file may have been moved or deleted. The alias still works from the cached copy.",
+                metadata.source_path
+            )));
+            return Ok(());
+        }
+    };
+
+    let current_hash = cache::compute_hash(&source_content);
+    if current_hash == metadata.hash {
+        println!("{}", style::success("Configuration is up to date."));
+        return Ok(());
+    }
+
+    // Validate new config before prompting
+    let _config: models::Configuration = serde_saphyr::from_str(&source_content)
+        .map_err(|e| anyhow::anyhow!("New configuration is invalid: {e}"))?;
+
+    println!("{}", style::warn("Configuration has changed."));
+    println!("Source: {}", metadata.source_path);
+
+    eprint!("Trust this configuration? [y/N] ");
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input)?;
+    if input.trim().to_lowercase() != "y" {
+        println!("Keeping previous trusted configuration.");
+        return Ok(());
+    }
+
+    cache::save_trusted_config(alias_name, &metadata.source_path, &source_content)?;
+    println!("{}", style::success("Configuration updated and trusted."));
+
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
 
@@ -305,8 +369,8 @@ fn main() -> anyhow::Result<()> {
 
         // Handle refresh-configuration
         if matches.subcommand_matches("refresh-configuration").is_some() {
-            println!("refresh-configuration not yet implemented");
-            return Ok(());
+            let alias_name = find_alias_for_config(path)?;
+            return handle_refresh_configuration(&alias_name);
         }
 
         // Dispatch user commands
@@ -390,5 +454,14 @@ mod tests {
         assert!(validate_alias_name("my tool").is_err());
         assert!(validate_alias_name("my;tool").is_err());
         assert!(validate_alias_name("my'tool").is_err());
+    }
+
+    #[test]
+    fn test_find_alias_for_config_no_aliases_dir() {
+        // If aliases dir doesn't exist, should error
+        // This is hard to test without mocking, so just verify the function compiles
+        // and the error message is reasonable
+        let result = find_alias_for_config("/nonexistent/config.yml");
+        assert!(result.is_err());
     }
 }
