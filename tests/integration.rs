@@ -188,3 +188,50 @@ commands:
         "expected 'Howdy' in stdout:\n{stdout}\nstderr:\n{stderr}"
     );
 }
+
+#[test]
+fn test_init_alias_appends_to_shell_config() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let target = dir.path().join("alias_test.yml");
+    let output = cargo_bin()
+        .args(["init", "--config-path", target.to_str().unwrap(), "--alias", "my-tool"])
+        .output()
+        .expect("failed to run cargo run");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "init --alias failed:\nstdout: {stdout}\nstderr: {stderr}"
+    );
+    assert!(target.exists(), "config file should be created");
+    assert!(
+        stdout.contains("Created configuration at:"),
+        "expected creation message in stdout:\n{stdout}"
+    );
+}
+
+#[test]
+fn test_init_alias_no_duplicate() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let target1 = dir.path().join("first.yml");
+    let output1 = cargo_bin()
+        .args(["init", "--config-path", target1.to_str().unwrap(), "--alias", "dup-test"])
+        .output()
+        .expect("failed to run cargo run");
+    assert!(output1.status.success(), "first init failed");
+
+    let target2 = dir.path().join("second.yml");
+    let output2 = cargo_bin()
+        .args(["init", "--config-path", target2.to_str().unwrap(), "--alias", "dup-test"])
+        .output()
+        .expect("failed to run cargo run");
+    let stdout2 = String::from_utf8_lossy(&output2.stdout);
+    assert!(
+        output2.status.success(),
+        "second init failed:\n{}", String::from_utf8_lossy(&output2.stderr)
+    );
+    assert!(
+        stdout2.contains("Created configuration at:"),
+        "expected creation message in stdout:\n{stdout2}"
+    );
+}
