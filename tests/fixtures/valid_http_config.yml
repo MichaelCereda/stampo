@@ -1,0 +1,13 @@
+version: "1.0"
+description: "HTTP Test CLI"
+slug: "httptest"
+commands:
+  fetch:
+    description: "Fetch a URL"
+    flags:
+      - name: "url"
+        description: "URL to fetch"
+    cmd:
+      http:
+        method: "GET"
+        url: "${{url}}"

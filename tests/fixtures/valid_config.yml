@@ -1,0 +1,20 @@
+version: "1.0"
+description: "Test CLI"
+slug: "test"
+commands:
+  greet:
+    description: "Greet a user"
+    flags:
+      - name: "name"
+        short: "n"
+        description: "Name of the user"
+    cmd:
+      run:
+        - "echo Hello, ${{name}}!"
+  multi:
+    description: "Multi-step command"
+    flags: []
+    cmd:
+      run:
+        - "echo step1"
+        - "echo step2"

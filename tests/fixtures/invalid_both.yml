@@ -1,0 +1,17 @@
+version: "1.0"
+description: "Invalid config"
+slug: "invalid"
+commands:
+  bad:
+    description: "Has both cmd and subcommands"
+    flags: []
+    cmd:
+      run:
+        - "echo hello"
+    subcommands:
+      sub:
+        description: "A subcommand"
+        flags: []
+        cmd:
+          run:
+            - "echo sub"
