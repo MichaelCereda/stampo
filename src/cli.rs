@@ -144,6 +144,12 @@ pub fn build_ring_cli() -> clap::Command {
                         .long("check-for-updates")
                         .help("Check for config changes on every new terminal session")
                         .action(clap::ArgAction::SetTrue),
+                )
+                .arg(
+                    clap::Arg::new("references")
+                        .long("references")
+                        .value_name("PATH")
+                        .help("Path to a references file listing config paths"),
                 ),
         )
 }

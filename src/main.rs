@@ -317,8 +317,38 @@ commands:
     Ok(())
 }
 
+/// A references file that lists config paths relative to its own location.
+#[derive(serde::Deserialize)]
+struct References {
+    configs: Vec<String>,
+}
+
+fn resolve_references(references_path: &std::path::Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+    let content = fs::read_to_string(references_path)
+        .map_err(|e| anyhow::anyhow!("Cannot read references file '{}': {e}", references_path.display()))?;
+    let refs: References = serde_saphyr::from_str(&content)
+        .map_err(|e| anyhow::anyhow!("Invalid references file '{}': {e}", references_path.display()))?;
+
+    let base_dir = references_path.parent().unwrap_or(std::path::Path::new("."));
+    let mut paths = Vec::new();
+    for config_path in &refs.configs {
+        let resolved = base_dir.join(config_path);
+        if !resolved.exists() {
+            anyhow::bail!(
+                "Config '{}' referenced in '{}' does not exist (resolved to '{}')",
+                config_path,
+                references_path.display(),
+                resolved.display()
+            );
+        }
+        paths.push(resolved);
+    }
+    Ok(paths)
+}
+
 fn handle_init(
     config_paths: Option<clap::parser::ValuesRef<'_, String>>,
+    references_path: Option<&String>,
     alias: Option<&String>,
     warn_only_on_conflict: bool,
     check_for_updates: bool,
@@ -326,7 +356,9 @@ fn handle_init(
     let alias_name = alias.ok_or_else(|| anyhow::anyhow!("--alias is required for init"))?;
     validate_alias_name(alias_name)?;
 
-    let paths: Vec<PathBuf> = if let Some(paths) = config_paths {
+    let paths: Vec<PathBuf> = if let Some(ref_path) = references_path {
+        resolve_references(std::path::Path::new(ref_path))?
+    } else if let Some(paths) = config_paths {
         paths.map(PathBuf::from).collect()
     } else {
         let dir = default_config_dir();
@@ -634,10 +666,11 @@ fn main() -> anyhow::Result<()> {
 
         if let Some(init_matches) = matches.subcommand_matches("init") {
             let config_paths = init_matches.get_many::<String>("config-path");
+            let references = init_matches.get_one::<String>("references");
             let alias = init_matches.get_one::<String>("alias");
             let warn_only = init_matches.get_flag("warn-only-on-conflict");
             let check_for_updates = init_matches.get_flag("check-for-updates");
-            return handle_init(config_paths, alias, warn_only, check_for_updates);
+            return handle_init(config_paths, references, alias, warn_only, check_for_updates);
         }
     }
 

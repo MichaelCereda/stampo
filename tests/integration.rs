@@ -385,6 +385,79 @@ fn test_color_flag_never() {
 }
 
 // ---------------------------------------------------------------------------
+// --references
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_init_with_references_file() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+
+    // Create two config files
+    let config_a = dir.path().join("alpha.yml");
+    std::fs::write(&config_a, "version: \"2.0\"\nname: \"alpha\"\ndescription: \"Alpha\"\ncommands:\n  hello:\n    description: \"Say hello\"\n    flags: []\n    cmd:\n      run:\n        - \"echo hello\"\n").unwrap();
+
+    let config_b = dir.path().join("beta.yml");
+    std::fs::write(&config_b, "version: \"2.0\"\nname: \"beta\"\ndescription: \"Beta\"\ncommands:\n  world:\n    description: \"Say world\"\n    flags: []\n    cmd:\n      run:\n        - \"echo world\"\n").unwrap();
+
+    // Create references file
+    let refs = dir.path().join("references.yml");
+    std::fs::write(&refs, "configs:\n  - alpha.yml\n  - beta.yml\n").unwrap();
+
+    let output = cargo_bin()
+        .args([
+            "init",
+            "--references",
+            refs.to_str().unwrap(),
+            "--alias",
+            "refs-test",
+        ])
+        .output()
+        .expect("failed to run");
+    assert!(
+        output.status.success(),
+        "init with --references should succeed:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    // Verify the alias can load both configs
+    let help = cargo_bin()
+        .args(["--alias-mode", "refs-test", "--help"])
+        .output()
+        .expect("failed to run help");
+    let stdout = String::from_utf8_lossy(&help.stdout);
+    assert!(stdout.contains("alpha"), "missing alpha config in help:\n{stdout}");
+    assert!(stdout.contains("beta"), "missing beta config in help:\n{stdout}");
+}
+
+#[test]
+fn test_init_references_missing_config_errors() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+
+    let refs = dir.path().join("references.yml");
+    std::fs::write(&refs, "configs:\n  - nonexistent.yml\n").unwrap();
+
+    let output = cargo_bin()
+        .args([
+            "init",
+            "--references",
+            refs.to_str().unwrap(),
+            "--alias",
+            "bad-refs-test",
+        ])
+        .output()
+        .expect("failed to run");
+    assert!(
+        !output.status.success(),
+        "init with missing referenced config should fail"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("does not exist"),
+        "expected 'does not exist' error:\n{stderr}"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // --check-for-updates / --check-updates
 // ---------------------------------------------------------------------------
 
