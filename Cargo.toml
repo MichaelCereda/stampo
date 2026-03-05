@@ -1,35 +1,14 @@
 [package]
 name = "ring-cli"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-clap = "2.33"
-serde = "1.0"
-serde_yaml = "0.8"
-serde_derive = "1.0"
-reqwest = "0.11.18"
-tokio = { version = "1", features = ["full"] }
-dirs = "3.0"
-
-[target.'cfg(darwin)'.dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "rustls-tls"] }
-
-[target.'cfg(all(target_os = "windows", target_arch="x86_64"))'.dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "rustls-tls"] }
-
-[target.'cfg(all(target_os = "windows", not(target_arch="x86_64")))'.dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "default-tls"] }
-openssl = { version = "0.10.56", features = ["vendored"] }
-
-[target.'cfg(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm")))'.dependencies]
-openssl = { version = "0.10.56", features = ["vendored"] }
-
-[target.'cfg(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel")))'.dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "rustls-tls"] }
-
-[target.'cfg(all(not(all(target_os = "linux", any(target_arch="x86_64", target_arch="arm", target_arch="armv7", target_arch="mipsel"))), not(target_os = "windows"), not(target_os = "darwin")))'.dependencies]
-reqwest = { version = "0.11.18", default-features = false, features = ["gzip", "json", "default-tls"] }
-openssl = { version = "0.10.56", features = ["vendored"] }
+clap = { version = "4.5", features = ["string"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_yml = "0.0.12"
+reqwest = { version = "0.13", default-features = false, features = ["gzip", "json", "rustls", "rustls-native-certs"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+dirs = "6.0"
+thiserror = "2.0"
+anyhow = "1.0"
