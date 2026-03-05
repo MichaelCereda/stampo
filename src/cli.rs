@@ -138,6 +138,12 @@ pub fn build_ring_cli() -> clap::Command {
                         .long("warn-only-on-conflict")
                         .help("Warn instead of error on command name conflicts")
                         .action(clap::ArgAction::SetTrue),
+                )
+                .arg(
+                    clap::Arg::new("check-for-updates")
+                        .long("check-for-updates")
+                        .help("Check for config changes on every new terminal session")
+                        .action(clap::ArgAction::SetTrue),
                 ),
         )
 }
@@ -422,6 +428,22 @@ mod tests {
             .expect("config paths")
             .collect();
         assert_eq!(paths.len(), 2);
+    }
+
+    #[test]
+    fn test_build_ring_cli_init_check_for_updates() {
+        let app = build_ring_cli();
+        let matches = app
+            .try_get_matches_from([
+                "ring-cli",
+                "init",
+                "--alias",
+                "my-tool",
+                "--check-for-updates",
+            ])
+            .expect("should parse --check-for-updates");
+        let init_matches = matches.subcommand_matches("init").expect("init subcommand");
+        assert!(init_matches.get_flag("check-for-updates"));
     }
 
     #[test]

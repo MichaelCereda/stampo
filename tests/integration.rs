@@ -384,6 +384,134 @@ fn test_color_flag_never() {
     assert!(!stdout.contains("\x1b["), "ANSI codes found with --color=never:\n{stdout}");
 }
 
+// ---------------------------------------------------------------------------
+// --check-for-updates / --check-updates
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_init_check_for_updates_flag_accepted() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let target = dir.path().join("check_updates.yml");
+    let output = cargo_bin()
+        .args([
+            "init",
+            "--config-path",
+            target.to_str().unwrap(),
+            "--alias",
+            "check-test",
+            "--check-for-updates",
+        ])
+        .output()
+        .expect("failed to run");
+    assert!(
+        output.status.success(),
+        "init with --check-for-updates should succeed:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn test_check_updates_no_changes_silent() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let config_path = dir.path().join("stable.yml");
+    let yaml = "version: \"2.0\"\nname: \"stable\"\ndescription: \"Stable\"\ncommands:\n  hello:\n    description: \"Say hello\"\n    flags: []\n    cmd:\n      run:\n        - \"echo hello\"\n";
+    std::fs::write(&config_path, yaml).unwrap();
+
+    // Init to create cache
+    let init_output = cargo_bin()
+        .args([
+            "init",
+            "--config-path",
+            config_path.to_str().unwrap(),
+            "--alias",
+            "stable-test",
+        ])
+        .output()
+        .expect("failed to run init");
+    assert!(init_output.status.success(), "init failed");
+
+    // Check updates — should produce no output since nothing changed
+    let output = cargo_bin()
+        .args(["--check-updates", "stable-test"])
+        .output()
+        .expect("failed to run check-updates");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        output.status.success(),
+        "check-updates should succeed:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        !stdout.contains("updates available"),
+        "should be silent when no changes:\n{stdout}"
+    );
+}
+
+#[test]
+fn test_check_updates_detects_changes() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let config_path = dir.path().join("changing.yml");
+    let yaml = "version: \"2.0\"\nname: \"changing\"\ndescription: \"Changing\"\ncommands:\n  hello:\n    description: \"Say hello\"\n    flags: []\n    cmd:\n      run:\n        - \"echo hello\"\n";
+    std::fs::write(&config_path, yaml).unwrap();
+
+    // Init to create cache
+    let init_output = cargo_bin()
+        .args([
+            "init",
+            "--config-path",
+            config_path.to_str().unwrap(),
+            "--alias",
+            "changing-test",
+        ])
+        .output()
+        .expect("failed to run init");
+    assert!(init_output.status.success(), "init failed");
+
+    // Modify the config file
+    let updated_yaml = "version: \"2.0\"\nname: \"changing\"\ndescription: \"Changed!\"\ncommands:\n  hello:\n    description: \"Say hello changed\"\n    flags: []\n    cmd:\n      run:\n        - \"echo hello changed\"\n";
+    std::fs::write(&config_path, updated_yaml).unwrap();
+
+    // Check updates — stdin provides 'n' to decline the update prompt
+    let output = Command::new("cargo")
+        .args(["run", "--", "--check-updates", "changing-test"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            if let Some(ref mut stdin) = child.stdin {
+                stdin.write_all(b"n\n").ok();
+            }
+            child.wait_with_output()
+        })
+        .expect("failed to run check-updates");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("updates available"),
+        "should announce updates when config changed:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("changing"),
+        "should mention the config name:\n{stdout}"
+    );
+}
+
+#[test]
+fn test_check_updates_nonexistent_alias_silent() {
+    // Should silently succeed even if alias doesn't exist (don't block shell startup)
+    let output = cargo_bin()
+        .args(["--check-updates", "nonexistent-alias-xyz"])
+        .output()
+        .expect("failed to run");
+    assert!(
+        output.status.success(),
+        "check-updates for nonexistent alias should succeed silently:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 #[test]
 fn test_init_requires_alias() {
     let dir = tempfile::TempDir::new().expect("tempdir");

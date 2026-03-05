@@ -143,6 +143,115 @@ fn install_alias(alias_name: &str) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+fn install_update_check(alias_name: &str) -> Result<(), anyhow::Error> {
+    let shells = detect_shell_configs();
+    for shell in &shells {
+        let content = fs::read_to_string(&shell.path)?;
+        let marker = format!("# ring-cli-update-check:{alias_name}");
+        if content.contains(&marker) {
+            continue;
+        }
+        let hook = format!("ring-cli --check-updates {alias_name} {marker}");
+        let mut file = fs::OpenOptions::new().append(true).open(&shell.path)?;
+        use std::io::Write;
+        writeln!(file, "{}", hook)?;
+    }
+    Ok(())
+}
+
+fn remove_update_check(alias_name: &str) -> Result<(), anyhow::Error> {
+    let shells = detect_shell_configs();
+    let marker = format!("# ring-cli-update-check:{alias_name}");
+    for shell in &shells {
+        let content = fs::read_to_string(&shell.path)?;
+        if !content.contains(&marker) {
+            continue;
+        }
+        let filtered: String = content
+            .lines()
+            .filter(|line| !line.contains(&marker))
+            .collect::<Vec<_>>()
+            .join("\n");
+        // Preserve trailing newline
+        let filtered = if content.ends_with('\n') {
+            format!("{filtered}\n")
+        } else {
+            filtered
+        };
+        fs::write(&shell.path, filtered)?;
+    }
+    Ok(())
+}
+
+fn handle_check_updates(alias_name: &str) -> Result<(), anyhow::Error> {
+    let (_, metadata) = match cache::load_trusted_configs(alias_name) {
+        Ok(data) => data,
+        Err(_) => return Ok(()), // Silently skip if no cache — don't block shell startup
+    };
+
+    let mut changed: Vec<&cache::ConfigEntry> = Vec::new();
+    for entry in &metadata.configs {
+        let source_content = match fs::read_to_string(&entry.source_path) {
+            Ok(c) => c,
+            Err(_) => continue, // Source gone — skip silently
+        };
+        let current_hash = cache::compute_hash(&source_content);
+        if current_hash != entry.hash {
+            changed.push(entry);
+        }
+    }
+
+    if changed.is_empty() {
+        return Ok(());
+    }
+
+    // Initialize color for the prompt
+    style::init(style::ColorMode::Auto);
+
+    println!(
+        "{}",
+        style::warn(&format!(
+            "Configuration updates available for '{alias_name}':"
+        ))
+    );
+    for entry in &changed {
+        println!("  - {} ({})", entry.name, entry.source_path);
+    }
+
+    eprint!("Do you want to update? [y/N] ");
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input)?;
+    if input.trim().to_lowercase() != "y" {
+        return Ok(());
+    }
+
+    // Re-read all configs and trust the updated versions
+    let mut updated_configs: Vec<(String, String, String)> = Vec::new();
+    for entry in &metadata.configs {
+        let source_content = match fs::read_to_string(&entry.source_path) {
+            Ok(content) => {
+                // Validate before trusting
+                let _config: models::Configuration = serde_saphyr::from_str(&content)
+                    .map_err(|e| {
+                        anyhow::anyhow!("Updated configuration '{}' is invalid: {e}", entry.name)
+                    })?;
+                content
+            }
+            Err(_) => {
+                // Fall back to cached copy
+                let dir = cache::alias_dir(alias_name);
+                fs::read_to_string(dir.join(format!("{}.yml", entry.name)))?
+            }
+        };
+        updated_configs.push((entry.name.clone(), entry.source_path.clone(), source_content));
+    }
+
+    cache::save_trusted_configs(alias_name, &updated_configs)?;
+    println!("{}", style::success("Configuration updated and trusted."));
+
+    Ok(())
+}
+
 fn install_completions(alias_name: &str) -> Result<(), anyhow::Error> {
     let shells = detect_shell_configs();
     for shell in &shells {
@@ -212,6 +321,7 @@ fn handle_init(
     config_paths: Option<clap::parser::ValuesRef<'_, String>>,
     alias: Option<&String>,
     warn_only_on_conflict: bool,
+    check_for_updates: bool,
 ) -> Result<(), anyhow::Error> {
     let alias_name = alias.ok_or_else(|| anyhow::anyhow!("--alias is required for init"))?;
     validate_alias_name(alias_name)?;
@@ -267,6 +377,13 @@ fn handle_init(
 
     // Install completion hooks
     install_completions(alias_name)?;
+
+    // Install or remove update-check shell hook
+    if check_for_updates {
+        install_update_check(alias_name)?;
+    } else {
+        remove_update_check(alias_name)?;
+    }
 
     println!("{}", style::success(&format!("Alias '{}' is ready!", alias_name)));
 
@@ -361,6 +478,14 @@ fn main() -> anyhow::Result<()> {
         let mut cmd = cli::build_cli(&configs);
         clap_complete::generate(shell, &mut cmd, alias_name.as_str(), &mut std::io::stdout());
         return Ok(());
+    }
+
+    // Handle update check (called by shell startup hook installed via --check-for-updates)
+    if let Some(pos) = args.iter().position(|a| a == "--check-updates") {
+        let alias_name = args
+            .get(pos + 1)
+            .ok_or_else(|| anyhow::anyhow!("Missing alias name after --check-updates"))?;
+        return handle_check_updates(alias_name);
     }
 
     // Detect alias mode (--alias-mode <name>)
@@ -511,7 +636,8 @@ fn main() -> anyhow::Result<()> {
             let config_paths = init_matches.get_many::<String>("config-path");
             let alias = init_matches.get_one::<String>("alias");
             let warn_only = init_matches.get_flag("warn-only-on-conflict");
-            return handle_init(config_paths, alias, warn_only);
+            let check_for_updates = init_matches.get_flag("check-for-updates");
+            return handle_init(config_paths, alias, warn_only, check_for_updates);
         }
     }
 
