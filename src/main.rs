@@ -40,6 +40,93 @@ fn alias_exists(file_content: &str, alias_name: &str, kind: ShellKind) -> bool {
     file_content.contains(&pattern)
 }
 
+struct ShellConfig {
+    path: PathBuf,
+    kind: ShellKind,
+    display_name: &'static str,
+}
+
+fn detect_shell_configs() -> Vec<ShellConfig> {
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => return vec![],
+    };
+    let candidates = vec![
+        ShellConfig {
+            path: home.join(".bashrc"),
+            kind: ShellKind::BashZsh,
+            display_name: "~/.bashrc",
+        },
+        ShellConfig {
+            path: home.join(".zshrc"),
+            kind: ShellKind::BashZsh,
+            display_name: "~/.zshrc",
+        },
+        ShellConfig {
+            path: home.join(".config/fish/config.fish"),
+            kind: ShellKind::Fish,
+            display_name: "~/.config/fish/config.fish",
+        },
+        ShellConfig {
+            path: home.join(".config/powershell/Microsoft.PowerShell_profile.ps1"),
+            kind: ShellKind::PowerShell,
+            display_name: "~/.config/powershell/Microsoft.PowerShell_profile.ps1",
+        },
+    ];
+    #[cfg(target_os = "windows")]
+    let candidates = {
+        let mut c = candidates;
+        c.push(ShellConfig {
+            path: home.join("Documents/PowerShell/Microsoft.PowerShell_profile.ps1"),
+            kind: ShellKind::PowerShell,
+            display_name: "~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
+        });
+        c
+    };
+    candidates.into_iter().filter(|sc| sc.path.exists()).collect()
+}
+
+fn install_alias(alias_name: &str, config_abs_path: &str) -> Result<(), anyhow::Error> {
+    let shells = detect_shell_configs();
+    if shells.is_empty() {
+        eprintln!("Warning: No shell config files found. Add the alias manually:");
+        eprintln!("  Bash/Zsh: {}", alias_line_bash_zsh(alias_name, config_abs_path));
+        eprintln!("  Fish:     {}", alias_line_fish(alias_name, config_abs_path));
+        eprintln!("  PowerShell: {}", alias_line_powershell(alias_name, config_abs_path));
+        return Ok(());
+    }
+
+    let mut modified = Vec::new();
+    for shell in &shells {
+        let content = fs::read_to_string(&shell.path)?;
+        if alias_exists(&content, alias_name, shell.kind) {
+            println!("Alias '{}' already exists in {}, skipping.", alias_name, shell.display_name);
+            continue;
+        }
+        let line = match shell.kind {
+            ShellKind::BashZsh => alias_line_bash_zsh(alias_name, config_abs_path),
+            ShellKind::Fish => alias_line_fish(alias_name, config_abs_path),
+            ShellKind::PowerShell => alias_line_powershell(alias_name, config_abs_path),
+        };
+        let mut file = fs::OpenOptions::new().append(true).open(&shell.path)?;
+        use std::io::Write;
+        writeln!(file, "\n{}", line)?;
+        modified.push(shell.display_name);
+    }
+
+    if !modified.is_empty() {
+        println!("Added alias '{}' to:", alias_name);
+        for name in &modified {
+            println!("  {}", name);
+        }
+        if let Some(first) = modified.first() {
+            println!("Restart your terminal or run 'source {}' to use '{}'.", first, alias_name);
+        }
+    }
+
+    Ok(())
+}
+
 fn handle_init(path: Option<&String>) -> Result<(), anyhow::Error> {
     let target = if let Some(p) = path {
         PathBuf::from(p)
