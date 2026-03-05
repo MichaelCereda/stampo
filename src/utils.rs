@@ -21,19 +21,25 @@ pub fn replace_placeholders(
 
 pub fn replace_env_vars(template: &str, verbose: bool) -> Result<String, RingError> {
     let mut result = template.to_string();
-    while let Some(start) = result.find("${{env.") {
+    let mut pos = 0;
+    loop {
+        let search = &result[pos..];
+        let Some(offset) = search.find("${{env.") else { break };
+        let start = pos + offset;
         let rest = &result[start + 7..];
         let end = rest.find("}}").ok_or_else(|| RingError::Config(
             format!("Unclosed placeholder starting at position {}", start),
         ))?;
-        let var_name = &rest[..end];
-        let var_value = std::env::var(var_name).map_err(|_| RingError::EnvVar {
-            name: var_name.to_string(),
+        let var_name = rest[..end].to_string();
+        let var_value = std::env::var(&var_name).map_err(|_| RingError::EnvVar {
+            name: var_name.clone(),
         })?;
         if verbose {
-            println!("Replacing env var {}: {}", var_name, var_value);
+            println!("Replacing env var {}: ***", var_name);
         }
-        result = result.replace(&format!("${{{{env.{}}}}}", var_name), &var_value);
+        let placeholder = format!("${{{{env.{}}}}}", var_name);
+        result = format!("{}{}{}", &result[..start], var_value, &result[start + placeholder.len()..]);
+        pos = start + var_value.len();
     }
     Ok(result)
 }

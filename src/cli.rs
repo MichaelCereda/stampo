@@ -18,6 +18,18 @@ fn extract_flag_values(
     values
 }
 
+fn build_arg(flag: &crate::models::Flag) -> clap::Arg {
+    let mut arg = clap::Arg::new(flag.name.clone())
+        .long(flag.name.clone())
+        .help(flag.description.clone());
+    if let Some(short_form) = &flag.short {
+        if let Some(c) = short_form.chars().next() {
+            arg = arg.short(c);
+        }
+    }
+    arg
+}
+
 pub fn add_subcommands_to_cli(
     command: &RingCommand,
     cmd_subcommand: clap::Command,
@@ -28,15 +40,7 @@ pub fn add_subcommands_to_cli(
             let mut sub_cli = clap::Command::new(sub_name.to_owned())
                 .about(sub_cmd.description.to_owned());
             for flag in &sub_cmd.flags {
-                let mut arg = clap::Arg::new(flag.name.to_owned())
-                    .long(flag.name.to_owned())
-                    .help(flag.description.to_owned());
-                if let Some(short_form) = &flag.short {
-                    if let Some(c) = short_form.chars().next() {
-                        arg = arg.short(c);
-                    }
-                }
-                sub_cli = sub_cli.arg(arg);
+                sub_cli = sub_cli.arg(build_arg(flag));
             }
             sub_cli = add_subcommands_to_cli(sub_cmd, sub_cli);
             updated_subcommand = updated_subcommand.subcommand(sub_cli);
@@ -47,7 +51,7 @@ pub fn add_subcommands_to_cli(
 
 pub fn build_cli_from_configs(configs: &[Configuration]) -> clap::Command {
     let mut app = clap::Command::new("ring-cli")
-        .version("1.1.0")
+        .version(env!("CARGO_PKG_VERSION"))
         .about("Ring CLI Tool powered by YAML configurations")
         .arg(
             clap::Arg::new("quiet")
@@ -85,15 +89,7 @@ pub fn build_cli_from_configs(configs: &[Configuration]) -> clap::Command {
             let mut cmd_subcommand =
                 clap::Command::new(cmd_name.to_owned()).about(cmd.description.to_owned());
             for flag in &cmd.flags {
-                let mut arg = clap::Arg::new(flag.name.to_owned())
-                    .long(flag.name.to_owned())
-                    .help(flag.description.to_owned());
-                if let Some(short_form) = &flag.short {
-                    if let Some(c) = short_form.chars().next() {
-                        arg = arg.short(c);
-                    }
-                }
-                cmd_subcommand = cmd_subcommand.arg(arg);
+                cmd_subcommand = cmd_subcommand.arg(build_arg(flag));
             }
             cmd_subcommand = add_subcommands_to_cli(cmd, cmd_subcommand);
             subcommand = subcommand.subcommand(cmd_subcommand);
@@ -171,7 +167,8 @@ pub async fn execute_http_request(
     let mut request_with_headers = request_builder;
     if let Some(header_map) = &http.headers {
         for (header_name, header_value) in header_map.iter() {
-            request_with_headers = request_with_headers.header(header_name, header_value);
+            let replaced_value = replace(header_value)?;
+            request_with_headers = request_with_headers.header(header_name, replaced_value);
         }
     }
 
@@ -205,13 +202,10 @@ pub fn execute_command(
     if let Some(actual_cmd) = &command.cmd {
         match actual_cmd {
             CmdType::Http { http } => {
-                match tokio::runtime::Runtime::new()
-                    .unwrap()
-                    .block_on(execute_http_request(http, &flag_values, verbose))
-                {
-                    Ok(output) => println!("{}", output),
-                    Err(e) => return Err(e),
-                }
+                let rt = tokio::runtime::Runtime::new()
+                    .map_err(|e| RingError::Config(format!("Failed to create async runtime: {}", e)))?;
+                let output = rt.block_on(execute_http_request(http, &flag_values, verbose))?;
+                println!("{}", output);
             }
             CmdType::Run { run } => {
                 match run_shell_commands(run, &flag_values, verbose, base_dir) {

@@ -94,7 +94,7 @@ fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() >= 2 && args[1] == "init" {
         let path = args.iter().position(|a| a == "--path").and_then(|i| args.get(i + 1));
-        return handle_init(path).map_err(Into::into);
+        return handle_init(path);
     }
 
     let config_path = args.iter()
