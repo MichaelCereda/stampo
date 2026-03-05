@@ -12,91 +12,87 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          # Platforms that don't work:
-          #
-          # - sparc64-unknown-linux-gnu - cannot compile openssl-sys
-          # - x86_64-unknown-illumos - weird error compiling openssl - "bin/sh: 1: granlib: not found"
 
           - os_name: FreeBSD-x86_64
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: x86_64-unknown-freebsd
             bin: ring-cli
             name: ring-cli-FreeBSD-x86_64.tar.gz
             skip_tests: true
           - os_name: Linux-x86_64
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: x86_64-unknown-linux-musl
             bin: ring-cli
             name: ring-cli-Linux-x86_64-musl.tar.gz
           - os_name: Linux-aarch64
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: aarch64-unknown-linux-musl
             bin: ring-cli
             name: ring-cli-Linux-aarch64-musl.tar.gz
           - os_name: Linux-arm
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: arm-unknown-linux-musleabi
             bin: ring-cli
             name: ring-cli-Linux-arm-musl.tar.gz
           - os_name: Linux-i686
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: i686-unknown-linux-musl
             bin: ring-cli
             name: ring-cli-Linux-i686-musl.tar.gz
             skip_tests: true
           - os_name: Linux-mips
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: mips-unknown-linux-musl
             bin: ring-cli
             name: ring-cli-Linux-mips.tar.gz
           - os_name: Linux-mipsel
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: mipsel-unknown-linux-musl
             bin: ring-cli
             name: ring-cli-Linux-mipsel.tar.gz
           - os_name: Linux-mips64
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: mips64-unknown-linux-muslabi64
             bin: ring-cli
             name: ring-cli-Linux-mips64.tar.gz
             skip_tests: true
           - os_name: Linux-mips64el
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: mips64el-unknown-linux-muslabi64
             bin: ring-cli
             name: ring-cli-Linux-mips64el.tar.gz
             skip_tests: true
           - os_name: Linux-powerpc
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: powerpc-unknown-linux-gnu
             bin: ring-cli
             name: ring-cli-Linux-powerpc-gnu.tar.gz
             skip_tests: true
           - os_name: Linux-powerpc64
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: powerpc64-unknown-linux-gnu
             bin: ring-cli
             name: ring-cli-Linux-powerpc64-gnu.tar.gz
             skip_tests: true
           - os_name: Linux-powerpc64le
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: powerpc64le-unknown-linux-gnu
             bin: ring-cli
             name: ring-cli-Linux-powerpc64le.tar.gz
             skip_tests: true
           - os_name: Linux-riscv64
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: riscv64gc-unknown-linux-gnu
             bin: ring-cli
             name: ring-cli-Linux-riscv64gc-gnu.tar.gz
           - os_name: Linux-s390x
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: s390x-unknown-linux-gnu
             bin: ring-cli
             name: ring-cli-Linux-s390x-gnu.tar.gz
             skip_tests: true
           - os_name: NetBSD-x86_64
-            os: ubuntu-20.04
+            os: ubuntu-latest
             target: x86_64-unknown-netbsd
             bin: ring-cli
             name: ring-cli-NetBSD-x86_64.tar.gz
@@ -132,7 +128,7 @@ jobs:
         toolchain:
           - stable
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache cargo & target directories
         uses: Swatinem/rust-cache@v2
         with:
@@ -175,7 +171,7 @@ jobs:
           ( startsWith( github.ref, 'refs/tags/v' ) ||
             github.ref == 'refs/tags/test-release' )
       - name: Publish release artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ring-cli-${{ matrix.platform.os_name }}
           path: "ring-cli-*"
@@ -188,9 +184,8 @@ jobs:
           ( startsWith( github.ref, 'refs/tags/v' ) ||
             github.ref == 'refs/tags/test-release' )
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           draft: true
           files: "ring-cli*"
-          body_path: Changes.md
         if: matrix.toolchain == 'stable' && startsWith( github.ref, 'refs/tags/v' )
