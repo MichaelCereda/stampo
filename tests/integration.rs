@@ -347,6 +347,7 @@ fn test_no_ansi_when_piped() {
 fn test_no_color_env_disables_ansi() {
     let output = cargo_bin()
         .env("NO_COLOR", "1")
+        .env_remove("CARGO_TERM_COLOR")
         .args(["-c", "tests/fixtures/valid_config.yml", "--help"])
         .output()
         .expect("failed to run");
