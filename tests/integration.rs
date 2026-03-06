@@ -817,3 +817,285 @@ fn test_completions_alias_name_in_output() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// Live shell completion tests — source generated scripts in real shells
+// ---------------------------------------------------------------------------
+
+fn has_shell(name: &str) -> bool {
+    Command::new("which")
+        .arg(name)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// Generate the completion script for a shell+alias, return as String.
+fn generate_completion_script(alias_name: &str, shell: &str) -> String {
+    let output = cargo_bin()
+        .args(["--generate-completions", shell, alias_name])
+        .output()
+        .unwrap_or_else(|_| panic!("failed to generate {shell} completions for {alias_name}"));
+    assert!(output.status.success(), "generate-completions failed: {}", String::from_utf8_lossy(&output.stderr));
+    String::from_utf8(output.stdout).expect("completion script not valid utf-8")
+}
+
+/// Extract the bash completion function name from a `complete -F <func> <cmd>` line.
+fn extract_bash_func_name(script: &str) -> String {
+    for line in script.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("complete -F ") {
+            let parts: Vec<&str> = trimmed.split_whitespace().collect();
+            if parts.len() >= 3 {
+                return parts[2].to_string();
+            }
+        }
+    }
+    panic!("no `complete -F` line found in bash completion script");
+}
+
+#[test]
+fn test_live_shell_bash_top_level() {
+    if !has_shell("bash") {
+        eprintln!("skipping: bash not available");
+        return;
+    }
+    let _dir = init_completions_alias("livebash");
+    let script = generate_completion_script("livebash", "bash");
+    let func = extract_bash_func_name(&script);
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let script_path = tmp.path().join("completions.bash");
+    std::fs::write(&script_path, &script).unwrap();
+
+    // Top-level: should show config name "myapp" as a subcommand
+    let test_cmd = format!(
+        r#"source "{path}" 2>&1 && COMP_WORDS=(livebash "") && COMP_CWORD=1 && COMP_LINE="livebash " && COMP_POINT=${{#COMP_LINE}} && {func} "livebash" "" "livebash" 2>/dev/null && printf '%s\n' "${{COMPREPLY[@]}}""#,
+        path = script_path.display(),
+        func = func,
+    );
+    let output = Command::new("bash")
+        .args(["--norc", "--noprofile", "-c", &test_cmd])
+        .output()
+        .expect("failed to run bash");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("myapp"), "bash live completions missing 'myapp' config subcommand:\n{stdout}");
+
+    // Second level: "livebash myapp <TAB>" should show deploy, status
+    let test_cmd2 = format!(
+        r#"source "{path}" 2>&1 && COMP_WORDS=(livebash myapp "") && COMP_CWORD=2 && COMP_LINE="livebash myapp " && COMP_POINT=${{#COMP_LINE}} && {func} "livebash" "" "myapp" 2>/dev/null && printf '%s\n' "${{COMPREPLY[@]}}""#,
+        path = script_path.display(),
+        func = func,
+    );
+    let output2 = Command::new("bash")
+        .args(["--norc", "--noprofile", "-c", &test_cmd2])
+        .output()
+        .expect("failed to run bash");
+    let stdout2 = String::from_utf8_lossy(&output2.stdout);
+    assert!(stdout2.contains("deploy"), "bash live completions missing 'deploy':\n{stdout2}");
+    assert!(stdout2.contains("status"), "bash live completions missing 'status':\n{stdout2}");
+}
+
+#[test]
+fn test_live_shell_bash_subcommand_flags() {
+    if !has_shell("bash") {
+        eprintln!("skipping: bash not available");
+        return;
+    }
+    let _dir = init_completions_alias("livebash2");
+    let script = generate_completion_script("livebash2", "bash");
+    let func = extract_bash_func_name(&script);
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let script_path = tmp.path().join("completions.bash");
+    std::fs::write(&script_path, &script).unwrap();
+
+    // Simulate completing "livebash2 myapp deploy --<TAB>"
+    let test_cmd = format!(
+        r#"source "{path}" 2>&1 && COMP_WORDS=(livebash2 myapp deploy --) && COMP_CWORD=3 && COMP_LINE="livebash2 myapp deploy --" && COMP_POINT=${{#COMP_LINE}} && {func} "livebash2" "--" "deploy" 2>/dev/null && printf '%s\n' "${{COMPREPLY[@]}}""#,
+        path = script_path.display(),
+        func = func,
+    );
+
+    let output = Command::new("bash")
+        .args(["--norc", "--noprofile", "-c", &test_cmd])
+        .output()
+        .expect("failed to run bash");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("--env"), "bash live completions missing '--env' flag:\n{stdout}");
+}
+
+#[test]
+fn test_live_shell_bash_nested_subcommands() {
+    if !has_shell("bash") {
+        eprintln!("skipping: bash not available");
+        return;
+    }
+    let dir = tempfile::TempDir::new().unwrap();
+    let config = dir.path().join("nested.yml");
+    std::fs::write(&config, r#"version: "2.0"
+name: "infra"
+description: "Infra tools"
+commands:
+  db:
+    description: "Database operations"
+    subcommands:
+      migrate:
+        description: "Run migrations"
+        flags: []
+        cmd:
+          run:
+            - "echo migrating"
+      seed:
+        description: "Seed database"
+        flags: []
+        cmd:
+          run:
+            - "echo seeding"
+"#).unwrap();
+    let init = cargo_bin()
+        .args(["init", "--config-path", config.to_str().unwrap(), "--alias", "livenested", "--force"])
+        .output()
+        .expect("init failed");
+    assert!(init.status.success());
+
+    let script = generate_completion_script("livenested", "bash");
+    let func = extract_bash_func_name(&script);
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let script_path = tmp.path().join("completions.bash");
+    std::fs::write(&script_path, &script).unwrap();
+
+    // Simulate completing "livenested infra db <TAB>" (infra is config name, db is the command with subcommands)
+    let test_cmd = format!(
+        r#"source "{path}" 2>&1 && COMP_WORDS=(livenested infra db "") && COMP_CWORD=3 && COMP_LINE="livenested infra db " && COMP_POINT=${{#COMP_LINE}} && {func} "livenested" "" "db" 2>/dev/null && printf '%s\n' "${{COMPREPLY[@]}}""#,
+        path = script_path.display(),
+        func = func,
+    );
+
+    let output = Command::new("bash")
+        .args(["--norc", "--noprofile", "-c", &test_cmd])
+        .output()
+        .expect("failed to run bash");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("migrate"), "bash nested completions missing 'migrate':\n{stdout}");
+    assert!(stdout.contains("seed"), "bash nested completions missing 'seed':\n{stdout}");
+}
+
+#[test]
+fn test_live_shell_fish_top_level() {
+    if !has_shell("fish") {
+        eprintln!("skipping: fish not available");
+        return;
+    }
+    let _dir = init_completions_alias("livefish");
+    let script = generate_completion_script("livefish", "fish");
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let script_path = tmp.path().join("completions.fish");
+    std::fs::write(&script_path, &script).unwrap();
+
+    // fish's `complete -C` prints completions non-interactively
+    let test_cmd = format!(
+        r#"source "{path}" 2>/dev/null; complete -C "livefish ""#,
+        path = script_path.display(),
+    );
+
+    let output = Command::new("fish")
+        .args(["-c", &test_cmd])
+        .output()
+        .expect("failed to run fish");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("deploy"), "fish live completions missing 'deploy':\n{stdout}");
+    assert!(stdout.contains("status"), "fish live completions missing 'status':\n{stdout}");
+}
+
+#[test]
+fn test_live_shell_fish_nested() {
+    if !has_shell("fish") {
+        eprintln!("skipping: fish not available");
+        return;
+    }
+    let _dir = init_completions_alias("livefish2");
+    let script = generate_completion_script("livefish2", "fish");
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let script_path = tmp.path().join("completions.fish");
+    std::fs::write(&script_path, &script).unwrap();
+
+    // Complete subcommand flags: "livefish2 deploy --"
+    let test_cmd = format!(
+        r#"source "{path}" 2>/dev/null; complete -C "livefish2 deploy --""#,
+        path = script_path.display(),
+    );
+
+    let output = Command::new("fish")
+        .args(["-c", &test_cmd])
+        .output()
+        .expect("failed to run fish");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("env"), "fish live completions missing '--env' flag:\n{stdout}");
+}
+
+#[test]
+fn test_live_shell_zsh_sources_cleanly() {
+    if !has_shell("zsh") {
+        eprintln!("skipping: zsh not available");
+        return;
+    }
+    let _dir = init_completions_alias("livezsh");
+    let script = generate_completion_script("livezsh", "zsh");
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let script_path = tmp.path().join("completions.zsh");
+    std::fs::write(&script_path, &script).unwrap();
+
+    // Verify: sources without error, completion function _livezsh is defined
+    let test_cmd = format!(
+        r#"autoload -Uz compinit && compinit -u 2>/dev/null && source "{path}" && type _livezsh >/dev/null 2>&1 && echo "FUNCTION_OK""#,
+        path = script_path.display(),
+    );
+
+    let output = Command::new("zsh")
+        .args(["--no-rcs", "-c", &test_cmd])
+        .output()
+        .expect("failed to run zsh");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "zsh failed to source completion script:\nstdout: {stdout}\nstderr: {stderr}"
+    );
+    assert!(
+        stdout.contains("FUNCTION_OK"),
+        "zsh completion function _livezsh not defined:\nstdout: {stdout}\nstderr: {stderr}"
+    );
+}
+
+#[test]
+fn test_live_shell_powershell_completions() {
+    if !has_shell("pwsh") {
+        eprintln!("skipping: pwsh not available");
+        return;
+    }
+    let _dir = init_completions_alias("liveps");
+    let script = generate_completion_script("liveps", "powershell");
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let script_path = tmp.path().join("completions.ps1");
+    std::fs::write(&script_path, &script).unwrap();
+
+    // Dot-source the script, then use TabExpansion2 to get completions
+    let test_cmd = format!(
+        r#". "{path}"; (TabExpansion2 -inputScript "liveps " -cursorColumn 7).CompletionMatches | ForEach-Object {{ $_.CompletionText }}"#,
+        path = script_path.display(),
+    );
+
+    let output = Command::new("pwsh")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &test_cmd])
+        .output()
+        .expect("failed to run pwsh");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("deploy"), "pwsh live completions missing 'deploy':\n{stdout}");
+    assert!(stdout.contains("status"), "pwsh live completions missing 'status':\n{stdout}");
+}

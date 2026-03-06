@@ -1,5 +1,10 @@
 name: Tests and release
 on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 env:
   CRATE_NAME: ring-cli
   GITHUB_TOKEN: ${{ secrets.CICD_GITHUB_TOKEN }}
@@ -189,3 +194,32 @@ jobs:
           draft: true
           files: "ring-cli*"
         if: matrix.toolchain == 'stable' && startsWith( github.ref, 'refs/tags/v' )
+
+  shell-completion-tests:
+    name: Shell completions (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    # Only run for pushes and same-repo PRs (not fork PRs)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo & target directories
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: "shell-tests"
+      - name: Configure Git
+        run: |
+          git config --global user.email "jdoe@example.com"
+          git config --global user.name "J. Doe"
+      - name: Install shells (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fish zsh
+      - name: Install shells (macOS)
+        if: runner.os == 'macOS'
+        run: brew install fish
+      - name: Run live shell completion tests
+        run: cargo test --test integration test_live_shell -- --nocapture
