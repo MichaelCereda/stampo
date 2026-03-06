@@ -997,6 +997,7 @@ fn test_live_shell_fish_top_level() {
     std::fs::write(&script_path, &script).unwrap();
 
     // fish's `complete -C` prints completions non-interactively
+    // Top level: should see config name "myapp", not individual commands
     let test_cmd = format!(
         r#"source "{path}" 2>/dev/null; complete -C "livefish ""#,
         path = script_path.display(),
@@ -1007,8 +1008,21 @@ fn test_live_shell_fish_top_level() {
         .output()
         .expect("failed to run fish");
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("deploy"), "fish live completions missing 'deploy':\n{stdout}");
-    assert!(stdout.contains("status"), "fish live completions missing 'status':\n{stdout}");
+    assert!(stdout.contains("myapp"), "fish live completions missing 'myapp' config subcommand:\n{stdout}");
+
+    // Second level: "livefish myapp <TAB>" should show deploy, status
+    let test_cmd2 = format!(
+        r#"source "{path}" 2>/dev/null; complete -C "livefish myapp ""#,
+        path = script_path.display(),
+    );
+
+    let output2 = Command::new("fish")
+        .args(["-c", &test_cmd2])
+        .output()
+        .expect("failed to run fish");
+    let stdout2 = String::from_utf8_lossy(&output2.stdout);
+    assert!(stdout2.contains("deploy"), "fish live completions missing 'deploy':\n{stdout2}");
+    assert!(stdout2.contains("status"), "fish live completions missing 'status':\n{stdout2}");
 }
 
 #[test]
@@ -1024,9 +1038,9 @@ fn test_live_shell_fish_nested() {
     let script_path = tmp.path().join("completions.fish");
     std::fs::write(&script_path, &script).unwrap();
 
-    // Complete subcommand flags: "livefish2 deploy --"
+    // Complete subcommand flags: "livefish2 myapp deploy --"
     let test_cmd = format!(
-        r#"source "{path}" 2>/dev/null; complete -C "livefish2 deploy --""#,
+        r#"source "{path}" 2>/dev/null; complete -C "livefish2 myapp deploy --""#,
         path = script_path.display(),
     );
 
@@ -1087,6 +1101,7 @@ fn test_live_shell_powershell_completions() {
     std::fs::write(&script_path, &script).unwrap();
 
     // Dot-source the script, then use TabExpansion2 to get completions
+    // Top level: should see config name "myapp", not individual commands
     let test_cmd = format!(
         r#". "{path}"; (TabExpansion2 -inputScript "liveps " -cursorColumn 7).CompletionMatches | ForEach-Object {{ $_.CompletionText }}"#,
         path = script_path.display(),
@@ -1097,6 +1112,19 @@ fn test_live_shell_powershell_completions() {
         .output()
         .expect("failed to run pwsh");
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("deploy"), "pwsh live completions missing 'deploy':\n{stdout}");
-    assert!(stdout.contains("status"), "pwsh live completions missing 'status':\n{stdout}");
+    assert!(stdout.contains("myapp"), "pwsh live completions missing 'myapp' config subcommand:\n{stdout}");
+
+    // Second level: "liveps myapp " should show deploy, status
+    let test_cmd2 = format!(
+        r#". "{path}"; (TabExpansion2 -inputScript "liveps myapp " -cursorColumn 13).CompletionMatches | ForEach-Object {{ $_.CompletionText }}"#,
+        path = script_path.display(),
+    );
+
+    let output2 = Command::new("pwsh")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &test_cmd2])
+        .output()
+        .expect("failed to run pwsh");
+    let stdout2 = String::from_utf8_lossy(&output2.stdout);
+    assert!(stdout2.contains("deploy"), "pwsh live completions missing 'deploy':\n{stdout2}");
+    assert!(stdout2.contains("status"), "pwsh live completions missing 'status':\n{stdout2}");
 }
