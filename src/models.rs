@@ -10,6 +10,8 @@ pub struct Configuration {
     pub description: String,
     #[serde(default, rename = "base-dir")]
     pub base_dir: Option<String>,
+    #[serde(default)]
+    pub banner: Option<String>,
     pub commands: HashMap<String, Command>,
 }
 
@@ -261,6 +263,43 @@ commands:
         assert_eq!(config.name, "test");
         assert_eq!(config.description, "My CLI");
         assert!(config.commands.contains_key("greet"));
+    }
+
+    #[test]
+    fn test_deserialize_banner_field() {
+        let yaml = r#"
+version: "2.0"
+name: "test"
+description: "Banner CLI"
+banner: "Welcome to Test CLI!"
+commands:
+  greet:
+    description: "Greet"
+    flags: []
+    cmd:
+      run:
+        - "echo hi"
+"#;
+        let config: Configuration = serde_saphyr::from_str(yaml).expect("valid YAML");
+        assert_eq!(config.banner.as_deref(), Some("Welcome to Test CLI!"));
+    }
+
+    #[test]
+    fn test_deserialize_no_banner_field() {
+        let yaml = r#"
+version: "2.0"
+name: "test"
+description: "No banner"
+commands:
+  greet:
+    description: "Greet"
+    flags: []
+    cmd:
+      run:
+        - "echo hi"
+"#;
+        let config: Configuration = serde_saphyr::from_str(yaml).expect("valid YAML");
+        assert!(config.banner.is_none());
     }
 
     #[test]

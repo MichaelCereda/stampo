@@ -20,6 +20,9 @@ pub struct ConfigEntry {
 pub struct AliasMetadata {
     /// All config entries registered for this alias.
     pub configs: Vec<ConfigEntry>,
+    /// Optional banner text to display on CLI invocation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub banner: Option<String>,
 }
 
 /// Returns the directory that holds all cached alias directories.
@@ -82,6 +85,7 @@ pub fn compute_hash(content: &str) -> String {
 pub fn save_trusted_configs(
     alias_name: &str,
     configs: &[(String, String, String)], // (name, source_path, content)
+    banner: Option<String>,
 ) -> Result<(), anyhow::Error> {
     let dir = alias_dir(alias_name);
     fs::create_dir_all(&dir)?;
@@ -97,7 +101,7 @@ pub fn save_trusted_configs(
         });
     }
 
-    let metadata = AliasMetadata { configs: entries };
+    let metadata = AliasMetadata { configs: entries, banner };
     let json = serde_json::to_string_pretty(&metadata)?;
     fs::write(dir.join("metadata.json"), json)?;
     Ok(())
@@ -185,7 +189,7 @@ mod tests {
                 trusted_at: "12345".to_string(),
             },
         ];
-        let metadata = AliasMetadata { configs: entries };
+        let metadata = AliasMetadata { configs: entries, banner: None };
         let json = serde_json::to_string_pretty(&metadata).unwrap();
         fs::write(alias_path.join("metadata.json"), json).unwrap();
 

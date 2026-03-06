@@ -285,7 +285,7 @@ fn handle_check_updates(alias_name: &str) -> Result<(), anyhow::Error> {
         updated_configs.push((entry.name.clone(), entry.source_path.clone(), source_content));
     }
 
-    cache::save_trusted_configs(alias_name, &updated_configs)?;
+    cache::save_trusted_configs(alias_name, &updated_configs, metadata.banner.clone())?;
     println!("{}", style::success("Configuration updated and trusted."));
 
     Ok(())
@@ -359,10 +359,12 @@ commands:
 /// A references file that lists config paths relative to its own location.
 #[derive(serde::Deserialize)]
 struct References {
+    #[serde(default)]
+    banner: Option<String>,
     configs: Vec<String>,
 }
 
-fn resolve_references(references_path: &std::path::Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+fn resolve_references(references_path: &std::path::Path) -> Result<(Vec<PathBuf>, Option<String>), anyhow::Error> {
     let content = fs::read_to_string(references_path)
         .map_err(|e| anyhow::anyhow!("Cannot read references file '{}': {e}", references_path.display()))?;
     let refs: References = serde_saphyr::from_str(&content)
@@ -382,7 +384,7 @@ fn resolve_references(references_path: &std::path::Path) -> Result<Vec<PathBuf>,
         }
         paths.push(resolved);
     }
-    Ok(paths)
+    Ok((paths, refs.banner))
 }
 
 fn handle_init(
@@ -414,10 +416,10 @@ fn handle_init(
         clean_alias_from_shells(alias_name)?;
     }
 
-    let paths: Vec<PathBuf> = if let Some(ref_path) = references_path {
+    let (paths, top_level_banner): (Vec<PathBuf>, Option<String>) = if let Some(ref_path) = references_path {
         resolve_references(std::path::Path::new(ref_path))?
     } else if let Some(paths) = config_paths {
-        paths.map(PathBuf::from).collect()
+        (paths.map(PathBuf::from).collect(), None)
     } else {
         let dir = default_config_dir();
         fs::create_dir_all(&dir)?;
@@ -425,7 +427,7 @@ fn handle_init(
         if !path.exists() {
             create_default_config(&path)?;
         }
-        vec![path]
+        (vec![path], None)
     };
 
     // Read and validate all configs
@@ -459,8 +461,26 @@ fn handle_init(
         configs_data.push((config.name.clone(), abs_path_str, content));
     }
 
+    // Resolve effective banner: top-level (from references) takes priority,
+    // otherwise collect per-config banners.
+    let banner = if top_level_banner.is_some() {
+        top_level_banner
+    } else {
+        let per_config: Vec<String> = paths.iter().zip(configs_data.iter())
+            .filter_map(|(_, (_, _, content))| {
+                let config: models::Configuration = serde_saphyr::from_str(content).ok()?;
+                config.banner
+            })
+            .collect();
+        if per_config.is_empty() {
+            None
+        } else {
+            Some(per_config.join("\n"))
+        }
+    };
+
     // Save all trusted configs to cache
-    cache::save_trusted_configs(alias_name, &configs_data)?;
+    cache::save_trusted_configs(alias_name, &configs_data, banner)?;
 
     // Install shell alias (only needs to be done once per alias)
     install_alias(alias_name)?;
@@ -531,7 +551,7 @@ fn handle_refresh_configuration(alias_name: &str) -> Result<(), anyhow::Error> {
     }
 
     if any_changed {
-        cache::save_trusted_configs(alias_name, &updated_configs)?;
+        cache::save_trusted_configs(alias_name, &updated_configs, metadata.banner.clone())?;
         println!("{}", style::success("Configuration updated and trusted."));
     } else {
         println!("{}", style::success("Configuration is up to date."));
@@ -642,6 +662,19 @@ fn main() -> anyhow::Result<()> {
 
         let is_quiet = matches.get_flag("quiet");
         let is_verbose = matches.get_flag("verbose");
+
+        // Display banner if configured and not in quiet mode
+        if !is_quiet {
+            if let Some(ref banner) = _metadata.banner {
+                eprintln!("{}", banner);
+            } else {
+                for config in &configs {
+                    if let Some(ref banner) = config.banner {
+                        eprintln!("{}", banner);
+                    }
+                }
+            }
+        }
 
         // Handle refresh-configuration
         if matches.subcommand_matches("refresh-configuration").is_some() {

@@ -317,6 +317,7 @@ mod tests {
             name: "test".to_string(),
             description: "Test CLI".to_string(),
             base_dir: None,
+            banner: None,
             commands,
         }
     }
@@ -341,6 +342,7 @@ mod tests {
             name: "empty".to_string(),
             description: "Empty".to_string(),
             base_dir: None,
+            banner: None,
             commands: HashMap::new(),
         };
         let app = build_cli(&[empty_config], "ring-cli");
@@ -378,6 +380,7 @@ mod tests {
             name: "nested".to_string(),
             description: "Nested CLI".to_string(),
             base_dir: None,
+            banner: None,
             commands,
         };
         let app = build_cli(&[config], "ring-cli");
