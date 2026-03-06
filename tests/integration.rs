@@ -627,3 +627,193 @@ fn test_init_requires_alias() {
         .expect("failed to run");
     assert!(!output.status.success(), "init without --alias should fail");
 }
+
+// ---------------------------------------------------------------------------
+// Shell completion tests
+// ---------------------------------------------------------------------------
+
+fn init_completions_alias(alias_name: &str) -> tempfile::TempDir {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let config = dir.path().join("comp.yml");
+    std::fs::write(&config, r#"version: "2.0"
+name: "myapp"
+description: "Test app"
+commands:
+  deploy:
+    description: "Deploy the app"
+    flags:
+      - name: "env"
+        short: "e"
+        description: "Target environment"
+    cmd:
+      run:
+        - "echo deploying to ${{env}}"
+  status:
+    description: "Show status"
+    flags: []
+    cmd:
+      run:
+        - "echo ok"
+"#).unwrap();
+    let output = cargo_bin()
+        .args(["init", "--config-path", config.to_str().unwrap(), "--alias", alias_name, "--force"])
+        .output()
+        .expect("init failed");
+    assert!(output.status.success(), "init failed: {}", String::from_utf8_lossy(&output.stderr));
+    dir
+}
+
+#[test]
+fn test_completions_zsh_valid() {
+    let _dir = init_completions_alias("comp-zsh");
+    let output = cargo_bin()
+        .args(["--generate-completions", "zsh", "comp-zsh"])
+        .output()
+        .expect("failed to generate completions");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success());
+    assert!(stdout.contains("#compdef comp-zsh"), "missing #compdef header:\n{}", &stdout[..200.min(stdout.len())]);
+    assert!(stdout.contains("_comp-zsh"), "missing completion function");
+    assert!(stdout.contains("compdef _comp-zsh comp-zsh"), "missing compdef binding");
+    // Subcommands present
+    assert!(stdout.contains("deploy"), "missing deploy subcommand in completions");
+    assert!(stdout.contains("status"), "missing status subcommand in completions");
+    // Flags present
+    assert!(stdout.contains("--env"), "missing --env flag in completions");
+    assert!(stdout.contains("-e"), "missing -e short flag in completions");
+}
+
+#[test]
+fn test_completions_bash_valid() {
+    let _dir = init_completions_alias("comp-bash");
+    let output = cargo_bin()
+        .args(["--generate-completions", "bash", "comp-bash"])
+        .output()
+        .expect("failed to generate completions");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success());
+    assert!(stdout.contains("complete -F"), "missing complete -F directive");
+    assert!(stdout.contains("comp-bash"), "missing alias name in bash completions");
+    assert!(stdout.contains("deploy"), "missing deploy in bash completions");
+    assert!(stdout.contains("status"), "missing status in bash completions");
+}
+
+#[test]
+fn test_completions_fish_valid() {
+    let _dir = init_completions_alias("comp-fish");
+    let output = cargo_bin()
+        .args(["--generate-completions", "fish", "comp-fish"])
+        .output()
+        .expect("failed to generate completions");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success());
+    assert!(stdout.contains("complete -c comp-fish"), "missing complete -c directive");
+    assert!(stdout.contains("deploy"), "missing deploy in fish completions");
+    assert!(stdout.contains("status"), "missing status in fish completions");
+}
+
+#[test]
+fn test_completions_powershell_valid() {
+    let _dir = init_completions_alias("comp-ps");
+    let output = cargo_bin()
+        .args(["--generate-completions", "powershell", "comp-ps"])
+        .output()
+        .expect("failed to generate completions");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success());
+    assert!(stdout.contains("Register-ArgumentCompleter"), "missing Register-ArgumentCompleter");
+    assert!(stdout.contains("comp-ps"), "missing alias name in powershell completions");
+    assert!(stdout.contains("deploy"), "missing deploy in powershell completions");
+    assert!(stdout.contains("status"), "missing status in powershell completions");
+}
+
+#[test]
+fn test_completions_nested_subcommands() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let config = dir.path().join("nested.yml");
+    std::fs::write(&config, r#"version: "2.0"
+name: "infra"
+description: "Infra tools"
+commands:
+  db:
+    description: "Database operations"
+    subcommands:
+      migrate:
+        description: "Run migrations"
+        flags: []
+        cmd:
+          run:
+            - "echo migrating"
+      seed:
+        description: "Seed database"
+        flags:
+          - name: "file"
+            short: "f"
+            description: "Seed file path"
+        cmd:
+          run:
+            - "echo seeding"
+"#).unwrap();
+    let output = cargo_bin()
+        .args(["init", "--config-path", config.to_str().unwrap(), "--alias", "comp-nested", "--force"])
+        .output()
+        .expect("init failed");
+    assert!(output.status.success());
+
+    let comps = cargo_bin()
+        .args(["--generate-completions", "zsh", "comp-nested"])
+        .output()
+        .expect("failed to generate completions");
+    let stdout = String::from_utf8_lossy(&comps.stdout);
+    assert!(comps.status.success());
+    // Nested subcommands present
+    assert!(stdout.contains("migrate"), "missing migrate in nested completions");
+    assert!(stdout.contains("seed"), "missing seed in nested completions");
+    assert!(stdout.contains("--file"), "missing --file flag for seed subcommand");
+}
+
+#[test]
+fn test_completions_shows_descriptions() {
+    let _dir = init_completions_alias("comp-desc");
+    let output = cargo_bin()
+        .args(["--generate-completions", "zsh", "comp-desc"])
+        .output()
+        .expect("failed to generate completions");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(output.status.success());
+    // zsh completions include descriptions
+    assert!(stdout.contains("Deploy the app"), "missing deploy description in completions");
+    assert!(stdout.contains("Show status"), "missing status description in completions");
+}
+
+#[test]
+fn test_completions_invalid_shell_errors() {
+    let _dir = init_completions_alias("comp-bad");
+    let output = cargo_bin()
+        .args(["--generate-completions", "tcsh", "comp-bad"])
+        .output()
+        .expect("failed to run");
+    assert!(!output.status.success(), "should fail for unknown shell");
+}
+
+#[test]
+fn test_completions_alias_name_in_output() {
+    let _dir = init_completions_alias("my-custom-tool");
+    for shell in &["zsh", "bash", "fish", "powershell"] {
+        let output = cargo_bin()
+            .args(["--generate-completions", shell, "my-custom-tool"])
+            .output()
+            .unwrap_or_else(|_| panic!("failed for shell {shell}"));
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            output.status.success(),
+            "{shell} completions failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            stdout.contains("my-custom-tool"),
+            "{shell} completions missing alias name:\n{}",
+            &stdout[..300.min(stdout.len())]
+        );
+    }
+}

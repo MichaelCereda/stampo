@@ -35,11 +35,11 @@ fn validate_alias_name(name: &str) -> Result<(), anyhow::Error> {
 }
 
 fn alias_line_bash_zsh(alias_name: &str) -> String {
-    format!("alias {alias_name}='ring-cli --alias-mode {alias_name}' # ring-cli")
+    format!("{alias_name}() {{ ring-cli --alias-mode {alias_name} \"$@\"; }} # ring-cli")
 }
 
 fn alias_line_fish(alias_name: &str) -> String {
-    format!("alias {alias_name} 'ring-cli --alias-mode {alias_name}' # ring-cli")
+    format!("function {alias_name}; ring-cli --alias-mode {alias_name} $argv; end # ring-cli")
 }
 
 fn alias_line_powershell(alias_name: &str) -> String {
@@ -47,12 +47,18 @@ fn alias_line_powershell(alias_name: &str) -> String {
 }
 
 fn alias_exists(file_content: &str, alias_name: &str, kind: ShellKind) -> bool {
-    let pattern = match kind {
-        ShellKind::BashZsh => format!("alias {alias_name}="),
-        ShellKind::Fish => format!("alias {alias_name} "),
-        ShellKind::PowerShell => format!("function {alias_name}"),
-    };
-    file_content.contains(&pattern)
+    match kind {
+        ShellKind::BashZsh => {
+            // Detect both old alias format and new function format
+            file_content.contains(&format!("alias {alias_name}="))
+                || file_content.contains(&format!("{alias_name}()"))
+        }
+        ShellKind::Fish => {
+            file_content.contains(&format!("alias {alias_name} "))
+                || file_content.contains(&format!("function {alias_name};"))
+        }
+        ShellKind::PowerShell => file_content.contains(&format!("function {alias_name}")),
+    }
 }
 
 struct ShellConfig {
@@ -163,16 +169,25 @@ fn clean_alias_lines(content: &str, alias_name: &str, kind: ShellKind) -> String
     let ring_cli_marker = "# ring-cli";
     let completion_marker = format!("# ring-cli-completions:{alias_name}");
     let update_marker = format!("# ring-cli-update-check:{alias_name}");
-    let alias_pattern = match kind {
-        ShellKind::BashZsh => format!("alias {alias_name}="),
-        ShellKind::Fish => format!("alias {alias_name} "),
-        ShellKind::PowerShell => format!("function {alias_name}"),
-    };
 
     let filtered: Vec<&str> = content
         .lines()
         .filter(|line| {
-            let is_alias_line = line.contains(&alias_pattern) && line.contains(ring_cli_marker);
+            let is_alias_line = match kind {
+                ShellKind::BashZsh => {
+                    (line.contains(&format!("alias {alias_name}="))
+                        || line.contains(&format!("{alias_name}()")))
+                        && line.contains(ring_cli_marker)
+                }
+                ShellKind::Fish => {
+                    (line.contains(&format!("alias {alias_name} "))
+                        || line.contains(&format!("function {alias_name};")))
+                        && line.contains(ring_cli_marker)
+                }
+                ShellKind::PowerShell => {
+                    line.contains(&format!("function {alias_name}")) && line.contains(ring_cli_marker)
+                }
+            };
             let is_completion_line = line.contains(&completion_marker);
             let is_update_line = line.contains(&update_marker);
             !is_alias_line && !is_completion_line && !is_update_line
@@ -782,13 +797,13 @@ mod tests {
     #[test]
     fn test_bash_alias_line() {
         let line = alias_line_bash_zsh("my-tool");
-        assert_eq!(line, "alias my-tool='ring-cli --alias-mode my-tool' # ring-cli");
+        assert_eq!(line, "my-tool() { ring-cli --alias-mode my-tool \"$@\"; } # ring-cli");
     }
 
     #[test]
     fn test_fish_alias_line() {
         let line = alias_line_fish("my-tool");
-        assert_eq!(line, "alias my-tool 'ring-cli --alias-mode my-tool' # ring-cli");
+        assert_eq!(line, "function my-tool; ring-cli --alias-mode my-tool $argv; end # ring-cli");
     }
 
     #[test]
@@ -802,16 +817,23 @@ mod tests {
 
     #[test]
     fn test_alias_already_exists_bash() {
-        let content = "# my stuff\nalias my-tool='ring-cli --alias-mode my-tool' # ring-cli\n";
+        // New function format
+        let content = "# my stuff\nmy-tool() { ring-cli --alias-mode my-tool \"$@\"; } # ring-cli\n";
         assert!(alias_exists(content, "my-tool", ShellKind::BashZsh));
         assert!(!alias_exists(content, "other-tool", ShellKind::BashZsh));
+        // Old alias format still detected
+        let old = "alias my-tool='ring-cli --alias-mode my-tool' # ring-cli\n";
+        assert!(alias_exists(old, "my-tool", ShellKind::BashZsh));
     }
 
     #[test]
     fn test_alias_already_exists_fish() {
-        let content = "alias my-tool 'ring-cli --alias-mode my-tool' # ring-cli\n";
+        let content = "function my-tool; ring-cli --alias-mode my-tool $argv; end # ring-cli\n";
         assert!(alias_exists(content, "my-tool", ShellKind::Fish));
         assert!(!alias_exists(content, "other-tool", ShellKind::Fish));
+        // Old alias format still detected
+        let old = "alias my-tool 'ring-cli --alias-mode my-tool' # ring-cli\n";
+        assert!(alias_exists(old, "my-tool", ShellKind::Fish));
     }
 
     #[test]
@@ -823,23 +845,30 @@ mod tests {
 
     #[test]
     fn test_clean_alias_lines_removes_ring_cli_entries() {
-        let content = "# my stuff\nalias os='ring-cli --alias-mode os' # ring-cli\neval \"$(ring-cli --generate-completions zsh os)\" # ring-cli-completions:os\nring-cli --check-updates os # ring-cli-update-check:os\nexport PATH=$HOME/bin:$PATH\n";
+        let content = "# my stuff\nos() { ring-cli --alias-mode os \"$@\"; } # ring-cli\neval \"$(ring-cli --generate-completions zsh os)\" # ring-cli-completions:os\nring-cli --check-updates os # ring-cli-update-check:os\nexport PATH=$HOME/bin:$PATH\n";
         let cleaned = clean_alias_lines(content, "os", ShellKind::BashZsh);
         assert_eq!(cleaned, "# my stuff\nexport PATH=$HOME/bin:$PATH\n");
     }
 
     #[test]
+    fn test_clean_alias_lines_removes_old_alias_format() {
+        let content = "alias os='ring-cli --alias-mode os' # ring-cli\neval \"$(ring-cli --generate-completions zsh os)\" # ring-cli-completions:os\n";
+        let cleaned = clean_alias_lines(content, "os", ShellKind::BashZsh);
+        assert_eq!(cleaned, "\n");
+    }
+
+    #[test]
     fn test_clean_alias_lines_preserves_other_aliases() {
-        let content = "alias os='ring-cli --alias-mode os' # ring-cli\nalias other='something'\n";
+        let content = "os() { ring-cli --alias-mode os \"$@\"; } # ring-cli\nalias other='something'\n";
         let cleaned = clean_alias_lines(content, "os", ShellKind::BashZsh);
         assert_eq!(cleaned, "alias other='something'\n");
     }
 
     #[test]
-    fn test_clean_alias_lines_ignores_non_ring_cli_alias() {
-        let content = "alias os='my-custom-command'\n";
+    fn test_clean_alias_lines_ignores_non_ring_cli_function() {
+        let content = "os() { my-custom-command; }\n";
         let cleaned = clean_alias_lines(content, "os", ShellKind::BashZsh);
-        assert_eq!(cleaned, "alias os='my-custom-command'\n");
+        assert_eq!(cleaned, "os() { my-custom-command; }\n");
     }
 
     #[test]
