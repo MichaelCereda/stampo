@@ -7,20 +7,20 @@ class RingCli < Formula
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/MichaelCereda/ring-cli/releases/download/v#{version}/ring-cli-Darwin-aarch64.tar.gz"
-      sha256 "beee755fc962d4b1d11f7fc26f8a19f573dfc591597004d704bcc84bf2f690d4"
+      sha256 "dd3d7f6b8fabf1d8d9f69f54346b6e2c6fba2bbbecae38762f8e08a543f2ee44"
     else
       url "https://github.com/MichaelCereda/ring-cli/releases/download/v#{version}/ring-cli-Darwin-x86_64.tar.gz"
-      sha256 "3b9eaa946d40b2d1bdf612ddd8e04f1069b21689116a8fba771efe0431fdec79"
+      sha256 "aaf0b0457c74507aa10500b0f3e49275c66d673ca363cb920854c586cb97349b"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
       url "https://github.com/MichaelCereda/ring-cli/releases/download/v#{version}/ring-cli-Linux-aarch64-musl.tar.gz"
-      sha256 "fe11d666c7bf1d65cce1bb8074c5df7c4e882fd4b9850b71112c9704734c4e99"
+      sha256 "89e1c321ca279ba7b112557056f50c5596407e118bfc083fb1cc1dc18e89494e"
     else
       url "https://github.com/MichaelCereda/ring-cli/releases/download/v#{version}/ring-cli-Linux-x86_64-musl.tar.gz"
-      sha256 "313d5c68e026d2a2b8302f0953c9dcb99da295eb975d03e10fc76411a180f728"
+      sha256 "b41a7aab6c53315779ddab411e98c113a944a5ad007f201cc521d95a08045675"
     end
   end
 
