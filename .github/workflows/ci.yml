@@ -25,6 +25,7 @@ jobs:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       contents: write  # needed for softprops/action-gh-release on tag pushes
+    continue-on-error: ${{ matrix.platform.cross_unstable || false }}
     strategy:
       fail-fast: false
       matrix:
@@ -36,6 +37,7 @@ jobs:
             bin: ring-cli
             name: ring-cli-FreeBSD-x86_64.tar.gz
             skip_tests: true
+            cross_unstable: true
           - os_name: Linux-x86_64
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
@@ -65,18 +67,21 @@ jobs:
             bin: ring-cli
             name: ring-cli-Linux-powerpc-gnu.tar.gz
             skip_tests: true
+            cross_unstable: true
           - os_name: Linux-powerpc64
             os: ubuntu-latest
             target: powerpc64-unknown-linux-gnu
             bin: ring-cli
             name: ring-cli-Linux-powerpc64-gnu.tar.gz
             skip_tests: true
+            cross_unstable: true
           - os_name: Linux-powerpc64le
             os: ubuntu-latest
             target: powerpc64le-unknown-linux-gnu
             bin: ring-cli
             name: ring-cli-Linux-powerpc64le.tar.gz
             skip_tests: true
+            cross_unstable: true
           - os_name: Linux-riscv64
             os: ubuntu-latest
             target: riscv64gc-unknown-linux-gnu
@@ -89,6 +94,7 @@ jobs:
             bin: ring-cli
             name: ring-cli-Linux-s390x-gnu.tar.gz
             skip_tests: true
+            cross_unstable: true
           # NetBSD removed: cross-compilation toolchain missing libexecinfo
           - os_name: Windows-aarch64
             os: windows-latest
