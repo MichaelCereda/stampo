@@ -94,9 +94,12 @@ jobs:
           sed -i "s/__SHA_LINUX_X86_64__/${{ steps.shas.outputs.sha_linux_x86_64 }}/" Formula/ring-cli.rb
 
       - name: Commit and push updated formula
+        env:
+          GH_TOKEN: ${{ secrets.CICD_GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/MichaelCereda/ring-cli.git"
           git add Formula/ring-cli.rb
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "chore: update Homebrew formula for v${{ steps.version.outputs.version }}"
