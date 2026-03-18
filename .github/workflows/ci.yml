@@ -25,19 +25,11 @@ jobs:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       contents: write  # needed for softprops/action-gh-release on tag pushes
-    continue-on-error: ${{ matrix.platform.cross_unstable || false }}
     strategy:
       fail-fast: false
       matrix:
         platform:
-
-          - os_name: FreeBSD-x86_64
-            os: ubuntu-latest
-            target: x86_64-unknown-freebsd
-            bin: ring-cli
-            name: ring-cli-FreeBSD-x86_64.tar.gz
-            skip_tests: true
-            cross_unstable: true
+          # -- Linux --
           - os_name: Linux-x86_64
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
@@ -55,64 +47,7 @@ jobs:
             bin: ring-cli
             name: ring-cli-Linux-arm-musl.tar.gz
             skip_tests: true
-          - os_name: Linux-i686
-            os: ubuntu-latest
-            target: i686-unknown-linux-musl
-            bin: ring-cli
-            name: ring-cli-Linux-i686-musl.tar.gz
-            skip_tests: true
-          - os_name: Linux-powerpc
-            os: ubuntu-latest
-            target: powerpc-unknown-linux-gnu
-            bin: ring-cli
-            name: ring-cli-Linux-powerpc-gnu.tar.gz
-            skip_tests: true
-            cross_unstable: true
-          - os_name: Linux-powerpc64
-            os: ubuntu-latest
-            target: powerpc64-unknown-linux-gnu
-            bin: ring-cli
-            name: ring-cli-Linux-powerpc64-gnu.tar.gz
-            skip_tests: true
-            cross_unstable: true
-          - os_name: Linux-powerpc64le
-            os: ubuntu-latest
-            target: powerpc64le-unknown-linux-gnu
-            bin: ring-cli
-            name: ring-cli-Linux-powerpc64le.tar.gz
-            skip_tests: true
-            cross_unstable: true
-          - os_name: Linux-riscv64
-            os: ubuntu-latest
-            target: riscv64gc-unknown-linux-gnu
-            bin: ring-cli
-            name: ring-cli-Linux-riscv64gc-gnu.tar.gz
-            skip_tests: true
-          - os_name: Linux-s390x
-            os: ubuntu-latest
-            target: s390x-unknown-linux-gnu
-            bin: ring-cli
-            name: ring-cli-Linux-s390x-gnu.tar.gz
-            skip_tests: true
-            cross_unstable: true
-          # NetBSD removed: cross-compilation toolchain missing libexecinfo
-          - os_name: Windows-aarch64
-            os: windows-latest
-            target: aarch64-pc-windows-msvc
-            bin: ring-cli.exe
-            name: ring-cli-Windows-aarch64.zip
-            skip_tests: true
-          - os_name: Windows-i686
-            os: windows-latest
-            target: i686-pc-windows-msvc
-            bin: ring-cli.exe
-            name: ring-cli-Windows-i686.zip
-            skip_tests: true
-          - os_name: Windows-x86_64
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
-            bin: ring-cli.exe
-            name: ring-cli-Windows-x86_64.zip
+          # -- macOS --
           - os_name: macOS-x86_64
             os: macOS-latest
             target: x86_64-apple-darwin
@@ -123,6 +58,18 @@ jobs:
             target: aarch64-apple-darwin
             bin: ring-cli
             name: ring-cli-Darwin-aarch64.tar.gz
+            skip_tests: true
+          # -- Windows --
+          - os_name: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: ring-cli.exe
+            name: ring-cli-Windows-x86_64.zip
+          - os_name: Windows-aarch64
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+            bin: ring-cli.exe
+            name: ring-cli-Windows-aarch64.zip
             skip_tests: true
         toolchain:
           - stable

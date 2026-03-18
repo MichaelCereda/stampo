@@ -95,7 +95,7 @@ petstore <TAB>              # see all commands and flags
 
 - **Zero Network Footprint** -- No HTTP client in the binary. OpenAPI specs are fetched via your own curl/wget with explicit consent. No callbacks, no analytics, no phone-home. Safe to deploy on production servers.
 
-- **Cross-Platform** -- Pre-built binaries for 20+ targets: Linux (x86_64, ARM, RISC-V, PowerPC, s390x), macOS (Intel and Apple Silicon), Windows (x86_64 and ARM64).
+- **Cross-Platform** -- Pre-built binaries for Linux (x86_64, aarch64, ARM), macOS (Intel and Apple Silicon), and Windows (x86_64 and ARM64).
 
 - **Built for Automation** -- Stdout/stderr separation for reliable piping. `-q` quiet mode, `--yes` for CI/CD, ASCII-only output, nonzero exit codes on error.
 
