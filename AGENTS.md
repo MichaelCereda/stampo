@@ -68,3 +68,7 @@ tests/
 - **Shell support:** Bash, Zsh, Fish, PowerShell (shell functions + tab completion)
 - **`--force` flag:** Required to overwrite an existing alias during init; cleans old entries from all shell configs before re-installing
 - **Shell functions (not aliases):** Uses `name() { ring-cli --alias-mode name "$@"; }` so tab completion works correctly with zsh/bash
+
+## Git Conventions
+
+- **No co-authoring:** Do not add `Co-Authored-By` trailers to commit messages.

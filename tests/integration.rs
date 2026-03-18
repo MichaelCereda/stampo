@@ -94,6 +94,7 @@ fn test_multi_step_command() {
 // ---------------------------------------------------------------------------
 
 #[test]
+#[cfg_attr(target_os = "windows", ignore = "pwd outputs MSYS paths on Windows")]
 fn test_relative_base_dir_resolves_from_config_location() {
     // Create a config with a relative base-dir inside a subdirectory
     let dir = tempfile::TempDir::new().unwrap();
@@ -142,6 +143,7 @@ commands:
 }
 
 #[test]
+#[cfg_attr(target_os = "windows", ignore = "pwd outputs MSYS paths on Windows")]
 fn test_relative_base_dir_legacy_mode() {
     // Also test the legacy -c mode
     let dir = tempfile::TempDir::new().unwrap();
@@ -351,6 +353,7 @@ fn test_init_alias_appends_to_shell_config() {
 }
 
 #[test]
+#[cfg_attr(target_os = "windows", ignore = "no .bashrc/.zshrc on Windows to detect duplicates")]
 fn test_init_alias_no_duplicate_without_force() {
     let dir = tempfile::TempDir::new().expect("tempdir");
     let target1 = dir.path().join("first.yml");
@@ -945,6 +948,7 @@ fn extract_bash_func_name(script: &str) -> String {
 }
 
 #[test]
+#[cfg_attr(target_os = "windows", ignore = "bash completions not supported on Windows CI")]
 fn test_live_shell_bash_top_level() {
     if !has_shell("bash") {
         eprintln!("skipping: bash not available");
@@ -987,6 +991,7 @@ fn test_live_shell_bash_top_level() {
 }
 
 #[test]
+#[cfg_attr(target_os = "windows", ignore = "bash completions not supported on Windows CI")]
 fn test_live_shell_bash_subcommand_flags() {
     if !has_shell("bash") {
         eprintln!("skipping: bash not available");
@@ -1016,6 +1021,7 @@ fn test_live_shell_bash_subcommand_flags() {
 }
 
 #[test]
+#[cfg_attr(target_os = "windows", ignore = "bash completions not supported on Windows CI")]
 fn test_live_shell_bash_nested_subcommands() {
     if !has_shell("bash") {
         eprintln!("skipping: bash not available");
