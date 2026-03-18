@@ -69,7 +69,7 @@ version: "2.0"
 name: "deploy"
 description: "Deployment operations"
 base-dir: ".."  # optional working directory (relative to this file, or absolute)
-banner: "🚀 Deploy CLI v1.0"     # optional banner shown on use
+banner: "Deploy CLI v1.0"     # optional banner shown on use
 commands:
   staging:
     description: "Deploy to staging"
@@ -208,7 +208,7 @@ Display a message when the alias is invoked. Banners print to stderr so they don
 version: "2.0"
 name: "deploy"
 description: "Deploy tools"
-banner: "🚀 Deploy CLI v2.0 — use with caution in production"
+banner: "Deploy CLI v2.0 -- use with caution in production"
 commands: ...
 ```
 

@@ -77,31 +77,29 @@ petstore <TAB>              # see all commands and flags
 
 ## Features
 
-**YAML-Driven CLI Generation** — Define commands, flags, and subcommands in YAML. No Rust required. Multi-command configs. Supports shell commands, scripts, and environment variable substitution.
+- **YAML-Driven CLI Generation** -- Define commands, flags, and subcommands in plain YAML. Supports shell commands, scripts, multi-step execution, and environment variable substitution. No Rust, Go, or Python required.
 
-**OpenAPI 3.0 Support** — Point ring-cli at an OpenAPI spec (local file or remote URL) and get a CLI automatically. Command hierarchy from paths, flags from parameters and request bodies, curl/wget for execution.
+- **OpenAPI 3.0 Support** -- Point ring-cli at an OpenAPI spec (local file or remote URL) and get a working CLI automatically. Paths become commands, parameters become flags, request bodies become dot-notation flags, and curl/wget handles execution.
 
-**Tab Completion at Every Level** — Bash, Zsh, Fish, and PowerShell completions installed automatically during setup. Works for commands, subcommands, and flags.
+- **Tab Completion** -- Bash, Zsh, Fish, and PowerShell completions installed automatically. Works at every level: top-level commands, nested subcommands, and flags.
 
-**Multi-Config Composition** — Combine multiple YAML configs or OpenAPI specs into a single alias. Each config becomes a top-level subcommand. Or use a references file to manage them together.
+- **Multi-Config Composition** -- Combine multiple YAML configs or OpenAPI specs into one alias. Each config becomes a top-level subcommand. Use a references file to manage them together.
 
-**Trust-Based Security Model** — ring-cli caches configs with SHA-256 hashes. Commands run only from your trusted cache, never directly from a file. Use `refresh-configuration` to see diffs and decide what to trust.
+- **Trust-Based Security** -- Configs are cached with SHA-256 hashes and only run from your trusted cache. Use `refresh-configuration` to review changes before accepting them.
 
-**Zero Network Footprint** — No HTTP client in the binary. OpenAPI specs are fetched by curl/wget with your explicit consent. Remote command execution stays local—no callbacks, no analytics, no phone-home.
+- **Zero Network Footprint** -- No HTTP client in the binary. OpenAPI specs are fetched via your own curl/wget with explicit consent. No callbacks, no analytics, no phone-home. Safe to deploy on production servers.
 
-**Cross-Platform** — Builds for 20+ targets: Linux (x86_64, ARM, MIPS, PowerPC), macOS (Intel and Apple Silicon), Windows (x86_64 and ARM64), and more.
+- **Cross-Platform** -- Pre-built binaries for 20+ targets: Linux (x86_64, ARM, RISC-V, PowerPC, s390x), macOS (Intel and Apple Silicon), Windows (x86_64 and ARM64).
 
-**Built for Automation** — Stdout and stderr separation for reliable piping. Quiet mode with `-q` to suppress banners. `--yes` flag for CI/CD to skip prompts. ASCII-only output for safe log parsing. Nonzero exit codes on error.
+- **Built for Automation** -- Stdout/stderr separation for reliable piping. `-q` quiet mode, `--yes` for CI/CD, ASCII-only output, nonzero exit codes on error.
 
-**Environment & Flag Variables** — Use `${{flag_name}}` to reference command flags and `${{env.VAR_NAME}}` for environment variables in your commands. Full POSIX-compliant substitution.
+- **Variable Substitution** -- `${{flag_name}}` for command flags, `${{env.VAR_NAME}}` for environment variables.
 
-**Verbose Mode for Debugging** — Pass `-v` or `--verbose` to see what ring-cli is doing. Useful for troubleshooting config parsing and command execution.
+- **Nested Subcommands** -- Unlimited nesting depth. Organize complex CLIs into natural hierarchies.
 
-**Nested Subcommands** — Commands can have subcommands, which can have subcommands. Unlimited depth. Organize complex CLIs naturally.
+- **Configurable Banners** -- Display messages on alias invocation. Per-config or global via references file. Prints to stderr, suppressed with `-q`.
 
-**Configurable Banners** — Display a message when your alias is invoked. Set per-config or globally via a references file. Banners go to stderr so they don't break pipes.
-
-**NO_COLOR Standard Support** — Respects the NO_COLOR environment variable. Auto-detects terminal output. Override with `--color=always`, `--color=never`, or `--color=auto`.
+- **Standards Compliant** -- Respects `NO_COLOR` env var. `--color=always|never|auto` override. `-v` verbose mode for debugging.
 
 ## Documentation
 
