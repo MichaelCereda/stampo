@@ -331,3 +331,16 @@ cargo install --path .
 ### From Releases
 
 Pre-built binaries for Linux, macOS, and Windows are available on the [Releases](https://github.com/MichaelCereda/ring-cli/releases) page.
+
+## Using with Claude Code
+
+If you use [Claude Code](https://claude.com/claude-code), the `/ring-cli-builder` command helps you create ring-cli configs from natural language descriptions or convert MCP server tools into CLI commands.
+
+```
+> /ring-cli-builder
+> I need a CLI for managing my Docker containers -- start, stop, logs, and deploy with an --env flag
+```
+
+The skill generates a valid ring-cli config, shows it for review, and optionally installs it as a shell alias. It can also read your MCP server configurations and convert those tools into standalone shell commands.
+
+See the [CLI Builder Guide](ring-cli-builder-guide.md) for details.

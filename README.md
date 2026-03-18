@@ -1,10 +1,12 @@
 # ring-cli
 
-Turn YAML configs and OpenAPI specs into fully-featured CLIs with tab completion, security you control, and zero attack surface.
+One binary. No runtime. No dependencies. Turn YAML configs and OpenAPI specs into fully-featured CLIs with tab completion, security you control, and zero attack surface.
 
 ## Why ring-cli
 
-ring-cli is a CLI generator for teams and operators who need custom command-line tools without writing Go, Python, or Rust. Define your commands in YAML, import an OpenAPI spec, or mix both. Get a shell alias with automatic tab completion, nested subcommands, environment variable substitution, and a trust-based security model that puts you in control. The tool runs only on your machine—no network footprint, no external dependencies, no surprises.
+ring-cli is a single static binary that generates complete CLI tools from YAML or OpenAPI specs -- no interpreters, no package managers, no frameworks to install. Drop it on any machine (Linux, macOS, Windows) and start building CLIs immediately.
+
+Define your commands in YAML, point it at an OpenAPI spec, or mix both. You get a shell alias with automatic tab completion, nested subcommands, environment variable substitution, and a trust-based security model. The binary has no network capabilities -- it never phones home, never downloads anything on its own, and carries zero attack surface. Safe to run on production servers, CI runners, and air-gapped environments.
 
 ## Install
 
@@ -83,7 +85,9 @@ petstore <TAB>              # see all commands and flags
 
 ## Features
 
-- **YAML-Driven CLI Generation** -- Define commands, flags, and subcommands in plain YAML. Supports shell commands, scripts, multi-step execution, and environment variable substitution. No Rust, Go, or Python required.
+- **Single Binary, No Dependencies** -- One static binary, no runtime, no interpreters, no package managers. Drop it on a machine and it works. Builds for 7 platforms out of the box.
+
+- **YAML-Driven CLI Generation** -- Define commands, flags, and subcommands in plain YAML. Supports shell commands, scripts, multi-step execution, and environment variable substitution.
 
 - **OpenAPI 3.0 Support** -- Point ring-cli at an OpenAPI spec (local file or remote URL) and get a working CLI automatically. Paths become commands, parameters become flags, request bodies become dot-notation flags, and curl/wget handles execution.
 
@@ -95,9 +99,7 @@ petstore <TAB>              # see all commands and flags
 
 - **Zero Network Footprint** -- No HTTP client in the binary. OpenAPI specs are fetched via your own curl/wget with explicit consent. No callbacks, no analytics, no phone-home. Safe to deploy on production servers.
 
-- **Cross-Platform** -- Pre-built binaries for Linux (x86_64, aarch64, ARM), macOS (Intel and Apple Silicon), and Windows (x86_64 and ARM64).
-
-- **Built for Automation** -- Stdout/stderr separation for reliable piping. `-q` quiet mode, `--yes` for CI/CD, ASCII-only output, nonzero exit codes on error.
+- **Built for Automation** -- Stdout/stderr separation for reliable piping. `-q` quiet mode, `--yes` for CI/CD, ASCII-only output, nonzero exit codes on error. Pre-built for Linux (x86_64, aarch64, ARM), macOS (Intel, Apple Silicon), and Windows (x86_64, ARM64).
 
 - **Variable Substitution** -- `${{flag_name}}` for command flags, `${{env.VAR_NAME}}` for environment variables.
 
@@ -107,12 +109,15 @@ petstore <TAB>              # see all commands and flags
 
 - **Standards Compliant** -- Respects `NO_COLOR` env var. `--color=always|never|auto` override. `-v` verbose mode for debugging.
 
+- **AI-Powered CLI Builder** -- Use `/ring-cli-builder` in Claude Code to create CLIs from natural language or convert MCP server tools into shell commands.
+
 ## Documentation
 
 - [Getting Started Guide](docs/getting-started.md) — Detailed walkthrough, configuration format, shell commands, nested subcommands
 - [Configuration Reference](docs/configuration-reference.md) — Complete YAML schema and field descriptions
 - [OpenAPI Guide](docs/openapi-guide.md) — Using OpenAPI specs, flag mapping, authentication, limitations
 - [Setup Guide](docs/setup-guide.md) — Installation from source, platform-specific notes, troubleshooting
+- [CLI Builder Guide](docs/ring-cli-builder-guide.md) — Using the Claude Code `/ring-cli-builder` skill
 
 ## License
 
