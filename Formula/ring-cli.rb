@@ -1,5 +1,5 @@
 class RingCli < Formula
-  desc "CLI generator from YAML configurations"
+  desc "Generate CLIs from YAML configs and OpenAPI specs"
   homepage "https://github.com/MichaelCereda/ring-cli"
   version "2.0.0"
   license "MIT"

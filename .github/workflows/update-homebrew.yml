@@ -46,7 +46,7 @@ jobs:
         run: |
           cat > Formula/ring-cli.rb << 'EOF'
           class RingCli < Formula
-            desc "CLI generator from YAML configurations"
+            desc "Generate CLIs from YAML configs and OpenAPI specs"
             homepage "https://github.com/MichaelCereda/ring-cli"
             version "__VERSION__"
             license "MIT"
