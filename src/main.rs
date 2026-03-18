@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
             })
             .collect::<Result<_, _>>()?;
 
-        let mut cmd = cli::build_cli(&configs, alias_name);
+        let mut cmd = cli::build_cli(&configs, alias_name, _metadata.description.as_deref());
         clap_complete::generate(shell, &mut cmd, alias_name.as_str(), &mut std::io::stdout());
         return Ok(());
     }
@@ -103,7 +103,7 @@ fn main() -> anyhow::Result<()> {
             out
         };
 
-        let matches = cli::build_cli(&configs, alias_name).get_matches_from(clap_args);
+        let matches = cli::build_cli(&configs, alias_name, _metadata.description.as_deref()).get_matches_from(clap_args);
 
         // Initialize color mode
         let color_str = matches.get_one::<String>("color").map(|s| s.as_str()).unwrap_or("auto");
@@ -176,7 +176,7 @@ fn main() -> anyhow::Result<()> {
             out
         };
 
-        let matches = cli::build_cli(&configs, "ring-cli").get_matches_from(clap_args);
+        let matches = cli::build_cli(&configs, "ring-cli", None).get_matches_from(clap_args);
 
         // Initialize color mode
         let color_str = matches.get_one::<String>("color").map(|s| s.as_str()).unwrap_or("auto");
@@ -223,7 +223,8 @@ fn main() -> anyhow::Result<()> {
             let force = init_matches.get_flag("force");
             let yes = init_matches.get_flag("yes");
             let verbose = init_matches.get_flag("verbose");
-            return init::handle_init(config_paths, references, alias, warn_only, check_for_updates, force, yes, verbose);
+            let description = init_matches.get_one::<String>("description");
+            return init::handle_init(config_paths, references, alias, warn_only, check_for_updates, force, yes, verbose, description);
         }
     }
 

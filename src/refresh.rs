@@ -138,6 +138,7 @@ pub(crate) fn handle_check_updates(alias_name: &str, yes: bool) -> Result<(), an
     cache::save_trusted_configs(
         alias_name,
         &updated_configs,
+        metadata.description.clone(),
         metadata.banner.clone(),
         metadata.http_tool.clone(),
     )?;
@@ -262,6 +263,7 @@ pub(crate) fn handle_refresh_configuration(
         cache::save_trusted_configs(
             alias_name,
             &updated_configs,
+            metadata.description.clone(),
             metadata.banner.clone(),
             metadata.http_tool.clone(),
         )?;

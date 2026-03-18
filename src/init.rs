@@ -74,11 +74,13 @@ commands:
 #[derive(serde::Deserialize)]
 struct References {
     #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
     banner: Option<String>,
     configs: Vec<String>,
 }
 
-fn resolve_references(references_path: &std::path::Path) -> Result<(Vec<PathBuf>, Option<String>), anyhow::Error> {
+fn resolve_references(references_path: &std::path::Path) -> Result<(Vec<PathBuf>, Option<String>, Option<String>), anyhow::Error> {
     let content = fs::read_to_string(references_path)
         .map_err(|e| anyhow::anyhow!("Cannot read references file '{}': {e}", references_path.display()))?;
     let refs: References = serde_saphyr::from_str(&content)
@@ -103,7 +105,7 @@ fn resolve_references(references_path: &std::path::Path) -> Result<(Vec<PathBuf>
         }
         paths.push(resolved);
     }
-    Ok((paths, refs.banner))
+    Ok((paths, refs.description, refs.banner))
 }
 
 pub(crate) fn handle_init(
@@ -115,6 +117,7 @@ pub(crate) fn handle_init(
     force: bool,
     yes: bool,
     verbose: bool,
+    description_override: Option<&String>,
 ) -> Result<(), anyhow::Error> {
     let alias_name = alias.ok_or_else(|| anyhow::anyhow!("--alias is required for init"))?;
     validate_alias_name(alias_name)?;
@@ -137,10 +140,10 @@ pub(crate) fn handle_init(
         shell::clean_alias_from_shells(alias_name)?;
     }
 
-    let (paths, top_level_banner): (Vec<PathBuf>, Option<String>) = if let Some(ref_path) = references_path {
+    let (paths, refs_description, top_level_banner): (Vec<PathBuf>, Option<String>, Option<String>) = if let Some(ref_path) = references_path {
         resolve_references(std::path::Path::new(ref_path))?
     } else if let Some(paths) = config_paths {
-        (paths.map(PathBuf::from).collect(), None)
+        (paths.map(PathBuf::from).collect(), None, None)
     } else {
         let dir = default_config_dir();
         fs::create_dir_all(&dir)?;
@@ -148,8 +151,12 @@ pub(crate) fn handle_init(
         if !path.exists() {
             create_default_config(&path)?;
         }
-        (vec![path], None)
+        (vec![path], None, None)
     };
+
+    // CLI --description flag overrides references file description.
+    // For single-config aliases without either, use the config's own description.
+    let description = description_override.cloned().or(refs_description);
 
     // Detect the HTTP tool once (lazily) for any openapi: paths.
     let mut http_tool_cache: Option<String> = None;
@@ -255,7 +262,7 @@ pub(crate) fn handle_init(
     // For openapi: sources the hash must be over the raw spec content, not the
     // transformed YAML.  We save normally first, then patch the metadata entries.
     let detected_tool = if any_openapi { http_tool_cache.clone() } else { None };
-    cache::save_trusted_configs(alias_name, &configs_data, banner.clone(), detected_tool.clone())?;
+    cache::save_trusted_configs(alias_name, &configs_data, description.clone(), banner.clone(), detected_tool.clone())?;
 
     // Patch hashes for openapi: sources so that refresh can detect real spec changes.
     if any_openapi {

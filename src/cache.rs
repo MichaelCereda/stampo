@@ -20,11 +20,13 @@ pub struct ConfigEntry {
 pub struct AliasMetadata {
     /// All config entries registered for this alias.
     pub configs: Vec<ConfigEntry>,
+    /// Optional description shown in the alias help output.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     /// Optional banner text to display on CLI invocation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub banner: Option<String>,
-    /// Optional HTTP tool override (e.g. `"curl"`) to use for HTTP commands.
-    /// When `None` the built-in reqwest client is used.
+    /// Optional HTTP tool hint (e.g. `"curl"` or `"wget"`).
     #[serde(default)]
     pub http_tool: Option<String>,
 }
@@ -89,6 +91,7 @@ pub fn compute_hash(content: &str) -> String {
 pub fn save_trusted_configs(
     alias_name: &str,
     configs: &[(String, String, String)], // (name, source_path, content)
+    description: Option<String>,
     banner: Option<String>,
     http_tool: Option<String>,
 ) -> Result<(), anyhow::Error> {
@@ -106,7 +109,7 @@ pub fn save_trusted_configs(
         });
     }
 
-    let metadata = AliasMetadata { configs: entries, banner, http_tool };
+    let metadata = AliasMetadata { configs: entries, description, banner, http_tool };
     let json = serde_json::to_string_pretty(&metadata)?;
     fs::write(dir.join("metadata.json"), json)?;
     Ok(())
@@ -194,7 +197,7 @@ mod tests {
                 trusted_at: "12345".to_string(),
             },
         ];
-        let metadata = AliasMetadata { configs: entries, banner: None, http_tool: None };
+        let metadata = AliasMetadata { configs: entries, description: None, banner: None, http_tool: None };
         let json = serde_json::to_string_pretty(&metadata).unwrap();
         fs::write(alias_path.join("metadata.json"), json).unwrap();
 
