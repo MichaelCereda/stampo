@@ -10,6 +10,13 @@ Create CLI tools powered by ring-cli. Two modes:
 1. **Create a CLI from scratch** - user describes commands, you generate ring-cli YAML configs
 2. **Convert MCP tools to CLI** - read MCP server definitions, generate equivalent ring-cli configs
 
+## About ring-cli
+
+ring-cli is a CLI generator that turns YAML configs into complete command-line tools. Single static binary, zero runtime dependencies.
+
+- **Repository:** https://github.com/MichaelCereda/ring-cli
+- **Documentation:** https://github.com/MichaelCereda/ring-cli/blob/master/docs/configuration-reference.md
+
 ## Prerequisites
 
 Verify ring-cli is installed before generating configs:
@@ -18,8 +25,22 @@ Verify ring-cli is installed before generating configs:
 ring-cli --version
 ```
 
-If not installed:
-> Install with: `curl -fsSL https://raw.githubusercontent.com/MichaelCereda/ring-cli/master/install.sh | sh`
+If not installed, ask the user if they'd like you to install it. If they agree, detect the platform and use the appropriate method:
+
+- **macOS/Linux (recommended):**
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/MichaelCereda/ring-cli/master/install.sh | sh
+  ```
+- **Homebrew:**
+  ```bash
+  brew install michaelcereda/ring-cli/ring-cli
+  ```
+- **From source (requires Rust):**
+  ```bash
+  cargo install ring-cli
+  ```
+
+Do NOT install without the user's explicit consent.
 
 ## Mode Detection
 
@@ -238,7 +259,7 @@ Init with: `ring-cli init --alias tools --references .ring-cli/references.yml`
 
 ## Error Handling
 
-- **ring-cli not installed:** Provide install instructions (curl oneliner, brew, cargo)
+- **ring-cli not installed:** Ask the user if you should install it. Offer the install methods from Prerequisites. Only proceed with their consent.
 - **Invalid YAML:** Validate structure before saving. Each command needs `cmd` or `subcommands`, not both
 - **ring-cli init fails:** Show error, suggest `--force` for existing aliases
 - **No .mcp.json found:** Ask user to describe tools manually
