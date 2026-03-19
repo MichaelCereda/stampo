@@ -163,9 +163,32 @@ configs:
 
 - **Nested Subcommands** -- Unlimited nesting depth. Organize complex CLIs into natural hierarchies.
 
-- **AI Agent Integration** -- Generate CLIs from natural language using the ring-cli Claude Code plugin. Convert MCP server tools into executable shell commands.
+- **Claude Code Plugin** -- Describe the CLI you want in plain English and the `/ring-cli:configuration-builder` skill generates the YAML config, installs it, and sets up tab completion. Also converts MCP server tools into standalone shell commands. See [Claude Code Integration](#claude-code-integration) below.
 
 - **Standards Compliant** -- Respects `NO_COLOR` env var. `--color=always|never|auto` override. `-v` verbose mode. Configurable banners on stderr.
+
+## Claude Code Integration
+
+ring-cli ships with a [Claude Code](https://claude.com/claude-code) plugin that lets you generate CLI configurations from natural language. Describe the commands you need, and Claude builds the YAML config for you.
+
+**Install the plugin:**
+
+```bash
+claude /plugin install --plugin-dir https://github.com/MichaelCereda/ring-cli/tree/master/plugin
+```
+
+**Then use it in any project:**
+
+```
+> /ring-cli:configuration-builder
+> I need a CLI to manage my Docker stack: start, stop, logs, and deploy with an env flag
+```
+
+Claude generates the ring-cli YAML config, shows it for review, and installs it as a shell alias -- complete with tab completion.
+
+The plugin also converts MCP server tools into shell commands. If you have MCP servers configured in Claude Code, it reads the tool definitions and generates equivalent ring-cli configs using real CLI tools (`gh`, `docker`, `kubectl`, etc.) wherever possible.
+
+See the [CLI Builder Guide](docs/ring-cli-builder-guide.md) for full details.
 
 ## Use Cases
 
@@ -173,6 +196,7 @@ configs:
 - **API Gateway CLI** -- Convert OpenAPI specs into self-documenting CLI tools for your APIs
 - **Platform Engineering** -- Distribute internal tools as single binaries to your team
 - **CI/CD Helpers** -- Custom CLI tools for GitHub Actions, GitLab CI, or Kubernetes hooks
+- **AI-Assisted CLI Generation** -- Describe what you need in plain English via the Claude Code plugin and get a working CLI
 - **MCP / AI Agent Tools** -- Expose CLI operations to Claude, ChatGPT, or local LLMs
 - **SRE Automation** -- Quick incident response tools without learning new frameworks
 - **Infrastructure-as-Code** -- Generate CLI wrappers around Terraform, CloudFormation, or Ansible
